@@ -1,7 +1,6 @@
 {
 	"name": "shoalbase",
-	"version": "0.1.0",
-	"private": true,
+	"version": "0.0.0-semantically-released",
 	"description": "phpMyAdmin, ported to Cloudflare Workers with page-for-page parity.",
 	"keywords": [
 		"phpmyadmin",
@@ -19,6 +18,16 @@
 	"license": "GPL-3.0-or-later",
 	"author": "James Ross <james@jross.me>",
 	"type": "module",
+	"bin": {
+		"shoalbase": "./bin/shoalbase.mjs"
+	},
+	"files": [
+		"bin/installer.mjs",
+		"bin/shoalbase.mjs"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
 	"scripts": {
 		"astro": "astro",
 		"templates": "vite-node --config scripts/render-route.config.ts scripts/precompile-templates.mjs",
@@ -36,7 +45,7 @@
 		"test": "vitest run",
 		"pretest:coverage": "npm run templates",
 		"test:coverage": "vitest run --coverage",
-		"deploy": "npm run build && wrangler deploy",
+		"deploy": "wrangler deploy",
 		"test:live": "node --experimental-strip-types tests/live-smoke.ts",
 		"parity:crawl": "node scripts/pma-crawl.mjs",
 		"db:up": "docker compose -f docker/compose.yaml up -d --wait",
@@ -64,16 +73,25 @@
 		"eslint-plugin-n": "18.2.2",
 		"eslint-plugin-unicorn": "72.0.0",
 		"jsdom": "26.1.0",
+		"mysql2": "3.23.4",
 		"pixelmatch": "8.0.0",
 		"pngjs": "7.0.0",
+		"semantic-release": "25.0.9",
+		"twing": "7.3.1",
 		"typescript": "6.0.3",
 		"typescript-eslint": "8.66.0",
 		"vite-node": "3.2.4",
 		"vitest": "3.2.4",
 		"wrangler": "4.119.0"
 	},
-	"dependencies": {
-		"mysql2": "3.23.4",
-		"twing": "7.3.1"
+	"cloudflare": {
+		"bindings": {
+			"PMA_COOKIE_SECRET": {
+				"description": "At least 32 random characters. It encrypts the login cookies, like phpMyAdmin's `blowfish_secret`; generate one with `openssl rand -base64 36`."
+			},
+			"PMA_SERVERS": {
+				"description": "A JSON array of the MySQL and MariaDB servers users can sign in to, such as `[{\"host\":\"mysql.example.com\"}]`. See the [README](https://github.com/Cherry/shoalbase#configuration) for TLS servers."
+			}
+		}
 	}
 }

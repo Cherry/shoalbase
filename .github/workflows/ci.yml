@@ -11,12 +11,14 @@ on:
         type: boolean
         default: false
 
+# Read-only by default; the release job asks for more itself.
 permissions:
   contents: read
 
+# Only PR runs are cancelled: on main a cancelled test would also skip that commit's release.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   WRANGLER_SEND_METRICS: 'false'
@@ -25,9 +27,12 @@ jobs:
   check:
     name: Lint, types, unit tests, build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -36,19 +41,37 @@ jobs:
       - run: npm run test:coverage
       - run: npm run build
 
+  # Fails when actions.lock drifts from the workflows or a locked pin no longer verifies upstream.
+  lockfile:
+    name: Verify actions.lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      # Pinned because Dependabot can't bump gh extensions; update it by hand.
+      - run: gh extension install github/gh-actions-lock --pin v0.3.0
+      - run: gh actions-lock --verify
+
   parity:
     name: Parity against phpMyAdmin 5.2.3
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - name: Start test servers and the oracle
         run: npm run db:up
+      # Before the build, which copies .dev.vars into dist/server.
       - run: npm run dev-vars
       - run: npm run build
 
@@ -74,7 +97,7 @@ jobs:
           npm run parity:crawl
           npm run parity:crawl -- --user root
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         if: ${{ failure() || inputs.crawl }}
         with:
           name: parity-reports
@@ -83,3 +106,34 @@ jobs:
             tests/visual/report/
             tests/parity-report/
           if-no-files-found: ignore
+
+  release:
+    name: Release
+    needs: [check, lockfile, parity]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write # release tags and GitHub releases
+      issues: write # semantic-release comments on released issues
+      pull-requests: write # semantic-release comments on released PRs
+      id-token: write # npm trusted publishing
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # No dependency cache here, so nothing a PR run wrote can end up in a published tarball.
+      # Node 26 ships the npm that trusted publishing needs.
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 26
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - name: Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release

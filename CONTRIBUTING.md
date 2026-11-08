@@ -31,4 +31,10 @@ For changes to pages, also run `npm run test:live` against `npx wrangler dev -c 
 
 Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
 
+## Releases
+
+Every push to `main` that passes CI runs semantic-release. A `feat` or `fix` commit tags a new version, writes the GitHub release notes, and publishes the `shoalbase` package to npm with trusted publishing.
+
+The npm package is only the installer in `bin/`, which clones the tag of its own version. Everything the Worker needs, including `mysql2` and `twing`, is a devDependency: the build bundles it, and `npx shoalbase` installs nothing.
+
 By contributing, you agree that your contribution is licensed under GPL-3.0-or-later, the license of this project.

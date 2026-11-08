@@ -4,16 +4,33 @@ phpMyAdmin 5.2.3, ported to TypeScript and running on Cloudflare Workers. It ren
 
 Every route of phpMyAdmin 5.2.3 is ported and checked against a live 5.2.3 instance, page by page and pixel by pixel. [docs/PARITY.md](docs/PARITY.md) describes how, and lists the known differences.
 
-## Requirements
+> [!NOTE]
+> **Heads-up:** this project was primarily AI-authored. The port, tests, tooling, and this README were written by AI coding agents in interactive sessions, with a human operator directing the work, reviewing output, and validating pages against a real phpMyAdmin 5.2.3. Read the code before trusting it in production.
 
-- Node.js 24 or later.
+## Get started
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Cherry/shoalbase)
+
+The button copies this repository to your GitHub account and deploys it with Workers Builds. It asks for the two secrets described under [Configuration](#configuration).
+
+Or set it up from a terminal:
+
+```sh
+npx shoalbase my-shoalbase
+```
+
+This clones the latest release into `my-shoalbase`, installs it, asks for your servers (and checks the certificate of each MySQL server over TLS), writes `.dev.vars` with a new cookie secret, and offers to deploy it to your Cloudflare account.
+
+You need:
+
+- Node.js 24 or later, and git.
 - A Cloudflare account to deploy. Local development runs in workerd through `wrangler dev`, without an account.
 - MySQL or MariaDB servers reachable from the internet over TCP. The tests run against MySQL 5.7 and 8.4 and MariaDB 12.3.
-- Docker, to run the tests that compare against phpMyAdmin.
+- Docker, only to run the tests that compare against phpMyAdmin.
 
 ## Configuration
 
-The Worker reads two secrets. Locally they go in `.dev.vars` (see `.dev.vars.example`). For a deployment, set them with `npx wrangler secret put <name>`.
+The Worker reads two secrets. Locally they go in `.dev.vars` (see `.dev.vars.example`). For a deployment, set them with `npx wrangler secret put <name>`, or pass the whole file with `npm run deploy -- --secrets-file .dev.vars`.
 
 | Name | Required | Value |
 | --- | --- | --- |
@@ -62,7 +79,7 @@ Sign in as `customer` with password `customerpw`. [docs/PARITY.md](docs/PARITY.m
 
 `npm run dev` runs Astro's dev server in Node. Bundling problems only show up in the built Worker, so check that too: `npm run build`, then `npx wrangler dev -c dist/server/wrangler.json`. The build copies `.dev.vars` into `dist/server/`, so build again after changing it.
 
-To deploy, set the two secrets, then run `npm run deploy`.
+To deploy, run `npm run build`, then `npm run deploy` (which runs `wrangler deploy`). Set the two secrets first, or add `-- --secrets-file .dev.vars` to upload them with the deployment.
 
 ### How it works
 
