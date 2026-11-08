@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Sets up a Shoalbase checkout: clones the release matching this package, asks for the servers, writes .dev.vars, and can deploy it.
 // The published package runs the bundle tsdown builds from this file (`npm run build:bin`), so it needs nothing from the clone.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -27,29 +27,43 @@ Options:
   -v, --version  Show the version`;
 
 function run(command: string, args: string[], cwd?: string) {
-	// npm is a .cmd shim on Windows, which Node only starts through a shell; none of its arguments here contain spaces.
-	const shell = process.platform === 'win32' && command === 'npm';
-	execFileSync(command, args, { cwd, stdio: 'inherit', shell });
+	if (process.platform === 'win32' && command === 'npm') {
+		// npm is a .cmd shim on Windows, which only a shell starts, and Node deprecates passing a shell separate arguments; none here contain spaces.
+		execSync([command, ...args].join(' '), { cwd, stdio: 'inherit' });
+		return;
+	}
+	execFileSync(command, args, { cwd, stdio: 'inherit' });
 }
 
-async function ask(rl: Interface, question: string) {
-	const answer = await rl.question(question);
-	return answer.trim();
+type Ask = (question: string) => Promise<string>;
+
+// Reads through the line iterator, which buffers, because rl.question() drops answers piped or pasted in before their question.
+function prompter(rl: Interface): Ask {
+	const lines = rl[Symbol.asyncIterator]();
+	return async (question) => {
+		rl.setPrompt(question);
+		rl.prompt();
+		const line = await lines.next();
+		if (line.done) {
+			throw new Error('Input ended before setup finished.');
+		}
+		return String(line.value).trim();
+	};
 }
 
-async function askServer(rl: Interface): Promise<ServerEntry | undefined> {
-	const host = await ask(rl, 'Server host: ');
+async function askServer(ask: Ask): Promise<ServerEntry | undefined> {
+	const host = await ask('Server host: ');
 	if (host === '') {
 		return;
 	}
-	const port = Number(await ask(rl, 'Port (3306): ') || 3306);
-	const ssl = /^y/i.test(await ask(rl, 'Connect over TLS? (y/N): '));
+	const port = Number(await ask('Port (3306): ') || 3306);
+	const ssl = /^y/i.test(await ask('Connect over TLS? (y/N): '));
 	if (!ssl) {
 		return serverEntry({ host, port, ssl });
 	}
 	let kind = '';
 	while (kind !== 'mysql' && kind !== 'mariadb') {
-		const answer = await ask(rl, 'Is it mysql or mariadb? ');
+		const answer = await ask('Is it mysql or mariadb? ');
 		kind = answer.toLowerCase();
 	}
 	if (kind === 'mariadb') {
@@ -59,21 +73,21 @@ async function askServer(rl: Interface): Promise<ServerEntry | undefined> {
 	// MySQL's self-signed certificate is trusted by pinning its key.
 	const presented = await pinFor(host, port);
 	console.log(`It presents ${presented.subject.replaceAll('\n', ' ')}, key pin ${presented.pin}`);
-	if (!/^y/i.test(await ask(rl, 'Trust this certificate? (y/N): '))) {
+	if (!/^y/i.test(await ask('Trust this certificate? (y/N): '))) {
 		console.log('Skipped. Check the certificate on the server, then add it again.');
 		return;
 	}
 	return serverEntry({ host, port, ssl, pin: presented.pin });
 }
 
-async function askServers(rl: Interface) {
+async function askServers(ask: Ask) {
 	const servers: ServerEntry[] = [];
 	do {
-		const server = await askServer(rl);
+		const server = await askServer(ask);
 		if (server) {
 			servers.push(server);
 		}
-	} while (servers.length === 0 || /^y/i.test(await ask(rl, 'Add another server? (y/N): ')));
+	} while (servers.length === 0 || /^y/i.test(await ask('Add another server? (y/N): ')));
 	return servers;
 }
 
@@ -99,13 +113,14 @@ async function main(args: string[]) {
 	run('npm', ['ci'], directory);
 
 	const rl = createInterface({ input: process.stdin, output: process.stdout });
+	const ask = prompter(rl);
 	let deploy;
 	try {
 		console.log('\nWhich servers can users sign in to? README.md explains how TLS servers are trusted.');
-		const servers = await askServers(rl);
+		const servers = await askServers(ask);
 		writeFileSync(path.join(directory, '.dev.vars'), `PMA_COOKIE_SECRET=${randomBytes(36).toString('base64url')}\nPMA_SERVERS=${JSON.stringify(servers)}\n`);
 		console.log(`\nWrote .dev.vars with ${servers.length} server(s) and a new cookie secret.`);
-		deploy = /^y/i.test(await ask(rl, 'Deploy to Cloudflare now? Wrangler will ask you to sign in. (y/N): '));
+		deploy = /^y/i.test(await ask('Deploy to Cloudflare now? Wrangler will ask you to sign in. (y/N): '));
 	} finally {
 		rl.close();
 	}
