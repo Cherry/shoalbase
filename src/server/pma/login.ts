@@ -31,6 +31,8 @@ export interface LoginFormOptions {
 	displayErrors?: string;
 	/** check_timeout/session_timedout requests render the form as a modal for the AJAX re-login dialog. */
 	sessionTimedOut?: boolean;
+	/** session_id() for the set_session field; the CSRF token stands in when there is none. */
+	sessionId?: string;
 	/** $db and $table to carry through the login. */
 	db?: string;
 	table?: string;
@@ -92,8 +94,7 @@ export async function renderLoginForm(options: LoginFormOptions): Promise<string
 		is_session_expired: sessionTimedOut,
 		// LoginCookieRecall with a blowfish_secret set, as in production.
 		has_autocomplete: true,
-		// There is no PHP session, so the CSRF token stands in for session_id() in the set_session field.
-		session_id: state.url.token,
+		session_id: options.sessionId ?? state.url.token,
 		is_arbitrary_server_allowed: false,
 		default_server: '',
 		default_user: options.defaultUser ?? '',

@@ -23,7 +23,7 @@ const check = (condition: boolean, message: string): void => {
 	}
 };
 
-/** A minimal cookie jar, so the sealed session cookies the server rotates on each response carry over like in a browser. */
+/** A minimal cookie jar, so the session and login cookies the server sends with each response carry over like in a browser. */
 const jar = new Map<string, string>();
 const remember = (response: Response): void => {
 	for (const line of response.headers.getSetCookie()) {
@@ -85,16 +85,22 @@ check(rejectedBody.includes('Cannot log in to the MySQL server') && rejectedBody
 
 const accepted = await login(password);
 await accepted.body?.cancel();
-check(accepted.status === 302 && jar.has('pmaAuth'), 'valid credentials must sign in');
+const authCookie = `pmaAuth-${server}`;
+check(accepted.status === 302 && jar.has(authCookie) && jar.has(`pmaUser-${server}`) && jar.has('phpMyAdmin'), 'valid credentials must sign in');
 check(!jar.values().some(value => value.includes(password)), 'cookies must not contain the plaintext password');
 
-const signedIn = jar.get('pmaAuth') ?? '';
-jar.set('pmaAuth', `AAAAAAAA${signedIn.slice(8)}`);
-const tampered = await send('/index.php?route=/');
+// Off the default server every URL carries server=n, as phpMyAdmin's own links do.
+const homeUrl = `/index.php?${new URLSearchParams({ route: '/', server })}`;
+const signedIn = jar.get(authCookie) ?? '';
+jar.set(authCookie, `AAAAAAAA${signedIn.slice(8)}`);
+const tampered = await send(homeUrl);
 check(isLoginForm(await tampered.text()), 'a tampered credentials cookie must be rejected');
-jar.set('pmaAuth', signedIn);
 
-const home = await send('/');
+// A rejected password cookie discards its session, as Session::secure() does, so sign in again.
+const again = await login(password);
+await again.body?.cancel();
+
+const home = await send(homeUrl);
 const homeBody = await home.text();
 check(home.status === 200 && !isLoginForm(homeBody), 'GET / must render the home page when signed in');
 const token = /name="token" value="([\da-f]+)"/.exec(homeBody)?.[1] ?? '';
@@ -119,9 +125,18 @@ for (const route of upstreamRoutes) {
 	}
 }
 
-const loggedOut = await send('/index.php?route=/logout', { method: 'POST', body: new URLSearchParams({ token }) });
+const copied = new Map(jar);
+const loggedOut = await send('/index.php?route=/logout', { method: 'POST', body: new URLSearchParams({ token, server }) });
 await loggedOut.body?.cancel();
-check(loggedOut.status === 302 && !jar.has('pmaAuth'), 'logout must clear the credentials cookie');
+check(loggedOut.status === 302 && !jar.has(authCookie), 'logout must clear the credentials cookie');
+
+// Logout deletes the session itself, so a copy of the cookies taken before it no longer signs anyone in.
+jar.clear();
+for (const [name, value] of copied) {
+	jar.set(name, value);
+}
+const replayed = await send(homeUrl);
+check(isLoginForm(await replayed.text()), 'cookies copied before logout must not sign in');
 
 console.log(`Crawled ${crawled} GET routes as ${user} on server ${server}.`);
 if (failures.length > 0) {

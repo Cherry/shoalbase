@@ -6,7 +6,7 @@ export default defineConfig({
 		imageService: 'passthrough',
 	}),
 	output: 'server',
-	// phpMyAdmin keeps its session in sealed cookies, so Astro's KV-backed sessions (and their SESSION binding) are not needed.
+	// phpMyAdmin's session lives in its own Durable Object (src/server/session-object.ts), so Astro's KV-backed sessions (and their SESSION binding) are not needed.
 	session: false,
 	site: 'https://shoalbase.example',
 	build: {

@@ -2,6 +2,7 @@
 // Usage: node scripts/pma-diff.mjs [--server <n>] [--user <persona>] [--post] [--ajax] [--headers] [--signed-out] [--out <dir>] [--before "[POST] <route> [key=value ...]"]... <route> [key=value ...]
 // Example: node scripts/pma-diff.mjs --ajax database/structure db=customer_db   (exit code 1 when they differ)
 // --user signs both sides in as a persona (customer, pma_grant, pma_creator or root; see PERSONAS in pma-oracle.mjs).
+// PMA_DIFF_SESSION_COOKIES=1 also compares the phpMyAdmin, pmaUser-n and pmaAuth-n cookies, which only the full Worker sets on signed-in requests.
 import { execFile } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -69,6 +70,8 @@ export function normalizeBody(body) {
 	return text;
 }
 
+const cookieName = line => line.slice(0, line.indexOf('='));
+
 // Cookie values are secrets or per-session; names and attributes are compared, in a fixed order.
 function normalizeCookie(value) {
 	const [pair, ...attributes] = value.split(';').map(part => part.trim());
@@ -84,8 +87,10 @@ function normalizeHeaders(status, headers) {
 	const lines = [`HTTP ${status}`];
 	const kept = headers
 		.filter(([name]) => !IGNORED_HEADERS.has(name.toLowerCase()))
-		// PHP's session cookie and the per-server login cookies it refreshes each request; the port's own auth cookie comes from middleware, and its $_SESSION cookies stand in for PHP's session file.
-		.filter(([name, value]) => name.toLowerCase() !== 'set-cookie' || !/^(?:phpMyAdmin|pmaAuth-\d+|pmaUser-\d+|pmaSession\d*)=/.test(value))
+		// The session and login cookies phpMyAdmin refreshes on every request come from our middleware, which render-route skips; PMA_DIFF_SESSION_COOKIES=1 keeps them.
+		.filter(([name, value]) => name.toLowerCase() !== 'set-cookie' || process.env.PMA_DIFF_SESSION_COOKIES || !/^(?:phpMyAdmin|pmaAuth-\d+|pmaUser-\d+)=/.test(value))
+		// PHP may set one cookie several times in a response; the browser keeps the last, so only that one is compared.
+		.filter(([name, value], index, all) => name.toLowerCase() !== 'set-cookie' || !all.slice(index + 1).some(([later, line]) => later.toLowerCase() === 'set-cookie' && cookieName(line) === cookieName(value)))
 		.map(([name, value]) => {
 			const lower = name.toLowerCase();
 			if (lower === 'expires' || lower === 'last-modified') {

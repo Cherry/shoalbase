@@ -89,7 +89,7 @@
 	"cloudflare": {
 		"bindings": {
 			"PMA_COOKIE_SECRET": {
-				"description": "At least 32 random characters. It encrypts the login cookies, like phpMyAdmin's `blowfish_secret`; generate one with `openssl rand -base64 36`."
+				"description": "At least 32 random characters. It encrypts the username cookie, like phpMyAdmin's `blowfish_secret`; generate one with `openssl rand -base64 36`."
 			},
 			"PMA_SERVERS": {
 				"description": "A JSON array of the MySQL and MariaDB servers users can sign in to, such as `[{\"host\":\"mysql.example.com\"}]`. See the [README](https://github.com/Cherry/shoalbase#configuration) for TLS servers."

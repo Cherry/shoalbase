@@ -13,12 +13,7 @@ import {
 import { Message } from '../../../../lib/pma/message.ts';
 import { isNumericString } from '../../../../lib/pma/php-compare.ts';
 import { mysqlDieHtml } from '../../../../lib/pma/server/mysql-die.ts';
-import {
-	SESSION_CHUNK_SIZE,
-	SESSION_MAX_CHUNKS,
-	sealedLength,
-	sessionPayload,
-} from '../../../../lib/pma/session.ts';
+import { MAX_SESSION_BYTES, sessionBytes } from '../../../../lib/pma/session.ts';
 import { hasNoRightsToDropDatabase } from '../../../../lib/pma/sql/sql.ts';
 import { nestedParams, phpArray, phpEntries } from '../../../../lib/pma/table-data/php-params.ts';
 import { backquote } from '../../../../lib/twig/sanitize.ts';
@@ -69,7 +64,7 @@ function importMessage(context: PmaContext): ImportMessage {
 	return data.Import_message as ImportMessage;
 }
 
-/** Marks this upload as done for /import-status, keeping only the latest upload so the session cookie stays small. */
+/** Marks this upload as done for /import-status, keeping only the latest upload so the session stays small. */
 function recordFinishedUpload(context: PmaContext): void {
 	const id = context.request.post.UPLOAD_IDENTIFIER;
 	if (typeof id !== 'string' || id.trim() === '') {
@@ -79,15 +74,12 @@ function recordFinishedUpload(context: PmaContext): void {
 	context.session.data.__upload_status = { handler: status.handler ?? UPLOAD_HANDLER, [id]: finishedUpload(id) };
 }
 
-// Whether the session still fits its cookies once fitSession() has dropped what it may drop.
+// Whether the session can still be stored, as one that outgrows MAX_SESSION_BYTES is not saved.
 function sessionFits(context: PmaContext): boolean {
-	const data = structuredClone(context.session.data);
-	delete data.tmpval?.query;
-	delete data.tmpval?.table_uiprefs;
-	return sealedLength(new TextEncoder().encode(sessionPayload(context.token, data)).length) <= SESSION_CHUNK_SIZE * SESSION_MAX_CHUNKS;
+	return sessionBytes(context.session.data) <= MAX_SESSION_BYTES;
 }
 
-/** Stores the message /import-status shows, falling back to a shorter one when the full text would not fit the session cookies. */
+/** Stores the message /import-status shows, falling back to a shorter one when the full text would make the session too large to store. */
 function storeMessage(context: PmaContext, html: string, shorter: () => string): void {
 	const message = importMessage(context);
 	message.message = html;

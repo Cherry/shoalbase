@@ -63,7 +63,7 @@ export interface PmaContextInput {
 	hasLangCookie: boolean;
 	/** Reads a request cookie by its raw name. */
 	cookie?: (name: string) => string | undefined;
-	/** The opened session cookies; a fresh session when absent. */
+	/** $_SESSION loaded by the middleware; an empty one when absent. */
 	session?: PmaSession;
 }
 

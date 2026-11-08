@@ -24,8 +24,9 @@ export const renderLoginPage = async (astro: APIContext, form: LoginFormState, r
 		displayErrors: form.driverError === '' ? undefined : displayError(form.driverError),
 		db: scalarParam(request.params, 'db'),
 		table: scalarParam(request.params, 'table'),
-		// There is no session before login, so this token is only a placeholder that the login POST does not check.
+		// The session only starts at login, so this token is a placeholder that the login POST does not check.
 		state: { url: { token: createSessionToken(), server: form.selectedServer, hasLangCookie } },
+		sessionId: astro.locals.sessionId,
 		isHttps: astro.url.protocol === 'https:',
 	});
 	if (!hasLangCookie) {

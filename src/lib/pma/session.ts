@@ -1,16 +1,10 @@
-// $_SESSION for the Workers port: upstream-shaped data kept in sealed, chunked cookies that belong to one login.
+// $_SESSION for the Workers port: upstream-shaped data that the session's Durable Object stores between requests.
 import { looseEquals } from './navigation-node.ts';
 
-/** The first cookie of the session; further chunks are pmaSession1, pmaSession2... */
-export const SESSION_COOKIE = 'pmaSession';
-// Browsers cap a cookie near 4096 bytes including its name and attributes.
-export const SESSION_CHUNK_SIZE = 3800;
-// Keeps the Cookie request header well under proxy and Worker header limits.
-export const SESSION_MAX_CHUNKS = 4;
 /** Display\Results::setConfigParamsForDisplayTable() remembers this many queries. */
 export const MAX_REMEMBERED_QUERIES = 10;
-// AES-GCM adds a 12 byte IV and a 16 byte tag around the JSON payload.
-const SEAL_OVERHEAD_BYTES = 28;
+// Far above what phpMyAdmin keeps in a session and far below a Durable Object's 8 MB per value, so a runaway value cannot grow forever.
+export const MAX_SESSION_BYTES = 1_048_576;
 
 /** One entry of the recent or favorite table lists. */
 export interface TableRef {
@@ -70,98 +64,26 @@ export interface SessionData {
 	[key: string]: unknown;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
-/** Cookie name of chunk `index`. */
-export function sessionChunkName(index: number): string {
-	if (index === 0) {
-		return SESSION_COOKIE;
-	}
-	return `${SESSION_COOKIE}${index}`;
+/** What a request changed in $_SESSION, by top-level key, so concurrent requests that touch different keys do not overwrite each other. */
+export interface SessionChanges {
+	set: Record<string, unknown>;
+	unset: string[];
 }
 
-/** Joins the chunks a request carries; `count` is how many were present, so a smaller session can delete the rest. */
-export function readSessionChunks(read: (name: string) => string | undefined): { sealed: string; count: number; } {
-	let sealed = '';
-	let count = 0;
-	while (count < SESSION_MAX_CHUNKS) {
-		const chunk = read(sessionChunkName(count));
-		if (chunk === undefined || chunk === '') {
-			break;
-		}
-		sealed += chunk;
-		count++;
-	}
-	return { sealed, count };
+/** The stored size of a session, which MAX_SESSION_BYTES bounds. */
+export function sessionBytes(data: SessionData): number {
+	return new TextEncoder().encode(JSON.stringify(data)).length;
 }
 
-export function splitSessionChunks(sealed: string): string[] {
-	const chunks: string[] = [];
-	for (let offset = 0; offset < sealed.length; offset += SESSION_CHUNK_SIZE) {
-		chunks.push(sealed.slice(offset, offset + SESSION_CHUNK_SIZE));
-	}
-	return chunks;
-}
-
-/** The base64url length the cookie cipher produces for a payload of this many UTF-8 bytes. */
-export function sealedLength(payloadBytes: number): number {
-	return Math.ceil(((payloadBytes + SEAL_OVERHEAD_BYTES) * 4) / 3);
-}
-
-/** What the cookie stores: the data plus the login token it belongs to. */
-export function sessionPayload(token: string, data: SessionData): string {
-	return JSON.stringify({ token, data });
-}
-
-const fits = (token: string, data: SessionData): boolean => {
-	const bytes = new TextEncoder().encode(sessionPayload(token, data)).length;
-	return sealedLength(bytes) <= SESSION_CHUNK_SIZE * SESSION_MAX_CHUNKS;
-};
-
-/**
- * Drops the most expendable state until the session fits its cookies: the oldest remembered query settings first, then
- * per-table UI preferences. Returns null when even that is not enough, so the previous cookie is kept.
- */
-export function fitSession(token: string, data: SessionData): SessionData | null {
-	if (fits(token, data)) {
-		return data;
-	}
-	const pruned = structuredClone(data);
-	const tmpval = pruned.tmpval ?? {};
-	const queries = tmpval.query ?? {};
-	for (const key of Object.keys(queries)) {
-		delete queries[key];
-		if (fits(token, pruned)) {
-			return pruned;
-		}
-	}
-	delete tmpval.table_uiprefs;
-	if (fits(token, pruned)) {
-		return pruned;
-	}
-	return null;
-}
-
-/** $_SESSION for one request: mutate `data` freely, and the response stores it again if it changed. */
+/** $_SESSION for one request: mutate `data` freely, and the changed keys are stored again at the end of the request. */
 export class PmaSession {
-	/** Restores a session from an opened cookie payload, which only counts when it belongs to the current login token. */
-	static fromPayload(payload: unknown, token: string, chunkCount: number): PmaSession {
-		if (isRecord(payload) && payload.token === token && isRecord(payload.data)) {
-			return new PmaSession(payload.data as SessionData, chunkCount);
-		}
-		return new PmaSession({}, chunkCount, chunkCount > 0);
-	}
-
-	private readonly snapshot: string;
+	private readonly snapshot: Map<string, string>;
 	readonly data: SessionData;
 
-	/**
-	 * `chunkCount` is how many cookies the request carried; `stale` marks cookies from another login or a broken seal,
-	 * which are replaced even when nothing changes.
-	 */
-	constructor(data: SessionData = {}, readonly chunkCount = 0, readonly stale = false) {
+	constructor(data: SessionData = {}) {
 		this.data = data;
-		this.snapshot = JSON.stringify(data);
+		this.snapshot = new Map(Object.entries(data).map(([key, value]) => [key, JSON.stringify(value)]));
 	}
 
 	/** $_SESSION['tmpval'], created on first use like PHP's auto-vivifying arrays. */
@@ -170,16 +92,27 @@ export class PmaSession {
 		return this.data.tmpval;
 	}
 
-	isChanged(): boolean {
-		return this.stale || JSON.stringify(this.data) !== this.snapshot;
+	/** The keys set or removed since the session was loaded; null when nothing changed. */
+	changes(): SessionChanges | null {
+		const set: Record<string, unknown> = {};
+		for (const [key, value] of Object.entries(this.data)) {
+			if (value !== undefined && this.snapshot.get(key) !== JSON.stringify(value)) {
+				set[key] = value;
+			}
+		}
+		const unset = this.snapshot.keys().filter(key => this.data[key] === undefined).toArray();
+		if (Object.keys(set).length === 0 && unset.length === 0) {
+			return null;
+		}
+		return { set, unset };
 	}
 
-	isEmpty(): boolean {
-		return Object.keys(this.data).length === 0;
+	isChanged(): boolean {
+		return this.changes() !== null;
 	}
 }
 
-/** RecentFavoriteTable's session list for a server; reading an absent list does not store an empty one, so the cookie stays unchanged. */
+/** RecentFavoriteTable's session list for a server; reading an absent list does not store an empty one, so the session stays unchanged. */
 export function tableList(session: PmaSession, type: 'recent' | 'favorite', server: number, create = false): TableRef[] {
 	const key = `${type}Tables` as const;
 	const stored = session.data.tmpval?.[key]?.[server];

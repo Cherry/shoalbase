@@ -1,6 +1,6 @@
 # Shoalbase
 
-phpMyAdmin 5.2.3, ported to TypeScript and running on Cloudflare Workers. It renders phpMyAdmin's own templates, themes and JavaScript, so it looks and behaves like the PHP version, but needs no PHP, web server or session store. Users sign in with their own MySQL or MariaDB credentials, and the Worker connects to the database over TCP from Cloudflare's network.
+phpMyAdmin 5.2.3, ported to TypeScript and running on Cloudflare Workers. It renders phpMyAdmin's own templates, themes and JavaScript, so it looks and behaves like the PHP version, but needs no PHP or web server: each phpMyAdmin session lives in its own Durable Object. Users sign in with their own MySQL or MariaDB credentials, and the Worker connects to the database over TCP from Cloudflare's network.
 
 Every route of phpMyAdmin 5.2.3 is ported and checked against a live 5.2.3 instance, page by page and pixel by pixel. [docs/PARITY.md](docs/PARITY.md) describes how, and lists the known differences.
 
@@ -34,8 +34,10 @@ The Worker reads two secrets. Locally they go in `.dev.vars` (see `.dev.vars.exa
 
 | Name | Required | Value |
 | --- | --- | --- |
-| `PMA_COOKIE_SECRET` | yes | At least 32 random characters. It encrypts the login cookies, like phpMyAdmin's `blowfish_secret`. Changing it signs everyone out. |
+| `PMA_COOKIE_SECRET` | yes | At least 32 random characters. It encrypts the username cookie, like phpMyAdmin's `blowfish_secret`. Changing it signs everyone out. |
 | `PMA_SERVERS` | yes | A JSON array of the servers users can sign in to. |
+
+Sessions also need the `PMA_SESSIONS` Durable Object binding. It is declared in `wrangler.jsonc` together with its migration, so `wrangler deploy`, `wrangler dev` and the Deploy button create it, and there is nothing to set up. See [Authentication and connections](#authentication-and-connections).
 
 Each `PMA_SERVERS` entry has these fields:
 
@@ -56,7 +58,7 @@ For example:
 ]
 ```
 
-The login form lists the servers sorted by host. phpMyAdmin's own settings are fixed to the configuration this port reproduces: cookie login, no configuration storage database (pmadb), no empty passwords, and server details hidden on the home page. They are in `src/lib/pma/config.ts`.
+The login form lists the servers sorted by host. A server's number is its place in that order, and the login cookies are bound to its host and port, so a change to `PMA_SERVERS` that renumbers a server signs its users out rather than sending their password to another server. phpMyAdmin's own settings are fixed to the configuration this port reproduces: cookie login, no configuration storage database (pmadb), no empty passwords, and server details hidden on the home page. They are in `src/lib/pma/config.ts`.
 
 ### TLS
 
@@ -77,7 +79,7 @@ npm run dev
 
 Sign in as `customer` with password `customerpw`. [docs/PARITY.md](docs/PARITY.md) lists the other test accounts. `npm run db:down` removes the containers and their data.
 
-`npm run dev` runs Astro's dev server in Node. Bundling problems only show up in the built Worker, so check that too: `npm run build`, then `npx wrangler dev -c dist/server/wrangler.json`. The build copies `.dev.vars` into `dist/server/`, so build again after changing it.
+`npm run dev` runs Astro's dev server in workerd through the Cloudflare Vite plugin, with the session Durable Object. Bundling problems only show up in the built Worker, so check that too: `npm run build`, then `npx wrangler dev -c dist/server/wrangler.json`. The build copies `.dev.vars` into `dist/server/`, so build again after changing it.
 
 To deploy, run `npm run build`, then `npm run deploy` (which runs `wrangler deploy`). Set the two secrets first, or add `-- --secrets-file .dev.vars` to upload them with the deployment.
 
@@ -94,7 +96,18 @@ Controllers live in `src/server/pma/controllers/**`. Each module exports `contro
 
 Pages render phpMyAdmin's own Twig templates (`vendor/phpmyadmin-5.2.3/templates`) with Twing. `npm run templates` precompiles them to ASTs at build time, because parsing them at runtime would need `eval`, which Workers forbid. It runs automatically before build, dev, test and lint.
 
-Login credentials are AES-GCM encrypted into an `HttpOnly`, `SameSite=Strict` cookie and expire after 1440 seconds of inactivity. phpMyAdmin's `$_SESSION` is kept in sealed, chunked cookies, since there is no server-side session store. For a signed-in request, the middleware (`src/middleware.ts`) prepares one TCP connection with `cloudflare:sockets`. It opens on the first query, every query of the request reuses it, and it closes once the response body has been sent.
+### Authentication and connections
+
+Sessions follow phpMyAdmin's cookie authentication, with a Durable Object in place of PHP's session file:
+
+- The `phpMyAdmin` cookie holds a random session id. It names one SQLite-backed Durable Object (`src/server/session-object.ts`, bound as `PMA_SESSIONS`) through a SHA-256 of the id, and that object holds the whole `$_SESSION`: the CSRF token, the access times, user preferences, browse settings and so on.
+- `pmaAuth-<server>` holds the password, AES-GCM encrypted with a random key that only the session object knows, and ends with the browser session. `pmaUser-<server>` holds the username, encrypted with `PMA_COOKIE_SECRET`, for a month, so the login form can fill it in again. Both are `HttpOnly` and `SameSite=Strict`, and are encrypted again on every request, as upstream does.
+- A session expires after `LoginCookieValidity` (1440 seconds, or the user's own preference) without activity in any browser window, and the next request shows phpMyAdmin's inactivity notice. An alarm deletes the object's storage 5 minutes after that, like PHP's session garbage collection.
+- Logging in starts a new session with a new id. Logging out deletes the session object and the password cookies, so copies of the cookies stop working at once.
+
+`src/middleware.ts` loads the session with one call to its object at the start of each `index.php` request, and the dispatcher stores what changed with a second call only when `$_SESSION` changed. Node has no Durable Objects, so `vitest` and `scripts/render-route.ts` (used by `pma-diff` and the crawl) use an in-memory stand-in (`scripts/stubs/durable-objects.ts`) that runs the same class.
+
+For a signed-in request, the middleware also prepares one TCP connection with `cloudflare:sockets`. It opens on the first query, every query of the request reuses it, and it closes once the response body has been sent.
 
 ## Testing
 

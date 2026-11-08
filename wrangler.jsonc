@@ -1,6 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "shoalbase",
+	"main": "./src/worker.ts",
 	"compatibility_date": "2026-08-01",
 	"compatibility_flags": [
 		"nodejs_compat",
@@ -12,5 +13,20 @@
 		"binding": "ASSETS",
 		"directory": "./dist",
 		"not_found_handling": "404-page"
-	}
+	},
+	// Each phpMyAdmin session is one SQLite-backed Durable Object holding $_SESSION, like PHP's session file.
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "PMA_SESSIONS",
+				"class_name": "PmaSessionObject"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["PmaSessionObject"]
+		}
+	]
 }

@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-	findServer,
 	loadServers,
+	selectServer,
 	serverByIndex,
-	serverIndex,
 	serverKey,
 } from '~/lib/servers';
 
@@ -43,16 +42,12 @@ describe('server list', () => {
 		expect(serverByIndex(servers, '0')).toBeUndefined();
 		expect(serverByIndex(servers, '1.5')).toBeUndefined();
 		expect(serverByIndex(servers, null)).toBeUndefined();
-		expect(serverIndex(servers, 'b:3306')).toBe(2);
-		expect(serverIndex(servers, 'b')).toBe(0);
 	});
 
 	it('tells apart servers that share a host by port', () => {
 		const servers = loadServers('[{"host":"db","port":3307},{"host":"db"}]');
 
 		expect(servers.map(server => serverKey(server))).toEqual(['db:3307', 'db:3306']);
-		expect(findServer(servers, 'db:3306')?.port).toBe(3306);
-		expect(findServer(servers, 'db')).toBeUndefined();
 	});
 
 	it('accepts only well-formed SHA-256 pins', () => {
@@ -61,5 +56,12 @@ describe('server list', () => {
 		expect(loadServers(`[{"host":"db","ssl":true,"pin":"${pin}"}]`)[0]?.pin).toBe(pin);
 		expect(() => loadServers('[{"host":"db","pin":"sha256/abc"}]')).toThrow('Invalid pin');
 		expect(() => loadServers('[{"host":"db","pin":42}]')).toThrow('Invalid pin');
+	});
+
+	it('selects the requested server by number or host, falling back to ServerDefault', () => {
+		const servers = loadServers('[{"host":"a"},{"host":"b"}]');
+
+		expect(['2', 'b', '1'].map(value => selectServer(servers, value))).toEqual([2, 2, 1]);
+		expect([undefined, '', '0', '3', '1.5', 'c', ['2']].map(value => selectServer(servers, value))).toEqual([1, 1, 1, 1, 1, 1, 1]);
 	});
 });

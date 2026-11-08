@@ -3,7 +3,7 @@ import { Message } from '../../../../lib/pma/message.ts';
 import { changePasswordMessage, changePasswordQueries } from '../../../../lib/pma/misc/user-password.ts';
 import { isNumericString } from '../../../../lib/pma/php-compare.ts';
 import { getFromRoute } from '../../../../lib/twig/url.ts';
-import { storeChangedPassword } from '../../../auth-runtime.ts';
+import { requestCookies, storePasswordCookie } from '../../../session-runtime.ts';
 import { renderTemplate } from '../../../twig/render.ts';
 import { getMessage } from '../../core/generator.ts';
 import { internalErrorPage } from '../database/common.ts';
@@ -78,10 +78,8 @@ async function changePassword(context: ControllerContext, password: string): Pro
 	}
 	await dbi.tryQuery('FLUSH PRIVILEGES;');
 	// AuthenticationCookie::handlePasswordChange(): the login cookie keeps working with the new password.
-	const auth = context.astro.locals.auth;
-	if (auth !== undefined) {
-		await storeChangedPassword(context.astro.cookies, context.astro.url, auth, password);
-	}
+	const { astro } = context;
+	await storePasswordCookie(requestCookies(name => astro.cookies.get(name)?.value, astro.url, astro.locals), context.server, context.session, password);
 	return { sqlQuery: queries.shown, error: null };
 }
 

@@ -1,28 +1,15 @@
-import type { AstroCookies } from 'astro';
+import type { SessionAccess } from '~/lib/session-access';
 
 import {
-	AUTH_COOKIE,
 	CANNOT_LOG_IN_MESSAGE,
-	RECALL_COOKIE,
-	RECALL_COOKIE_MAX_AGE_SECONDS,
+	authCookieName,
 	connectionErrorMessage,
-	createSessionToken,
 	loginFailureMessage,
-	recalledLogin,
 } from '~/lib/auth';
-import {
-	type ServerConfig,
-	serverByIndex,
-	serverIndex,
-	serverKey,
-} from '~/lib/servers';
-import {
-	configuredServers,
-	cookieCipher,
-	cookieOptions,
-	nowSeconds,
-} from '~/server/auth-runtime';
+import { type ServerConfig, selectServer, serverByIndex } from '~/lib/servers';
+import { configuredServers } from '~/server/auth-runtime';
 import { connectFromWorker } from '~/server/mysql-connector';
+import { type PhpCookies, createLoginSession, recalledUser } from '~/server/session-runtime';
 
 export interface LoginFormState {
 	servers: ServerConfig[];
@@ -35,32 +22,36 @@ export interface LoginFormState {
 	driverError: string;
 }
 
-export type LoginAttempt = { status: 'signed-in'; } | { status: 'failed'; form: LoginFormState; };
+export type LoginAttempt = { status: 'signed-in'; server: number; } | { status: 'failed'; form: LoginFormState; };
 
-/** The login form as phpMyAdmin shows it before any attempt: remembered user and server, plus the inactivity notice if relevant. */
-export const initialLoginForm = async (cookies: AstroCookies, sessionExpired: boolean): Promise<LoginFormState> => {
+/**
+ * The login form as phpMyAdmin shows it before any attempt: the requested server ($GLOBALS['server']), the username LoginCookieRecall
+ * remembers for it, and the inactivity notice when the session just expired after `expiredValidity` seconds.
+ */
+export const initialLoginForm = async (cookies: PhpCookies, requestedServer: unknown, expiredValidity: number | undefined): Promise<LoginFormState> => {
 	const servers = configuredServers();
-	const cipher = await cookieCipher();
-	const recalled = recalledLogin(await cipher.open(RECALL_COOKIE, cookies.get(RECALL_COOKIE)?.value));
-	let selectedServer = 1;
-	if (recalled) {
-		selectedServer = Math.max(serverIndex(servers, recalled.server), 1);
+	const selectedServer = selectServer(servers, requestedServer);
+	let alertMessage = '';
+	if (expiredValidity !== undefined) {
+		alertMessage = loginFailureMessage('no-activity', expiredValidity);
 	}
 	return {
 		servers,
 		selectedServer,
-		defaultUser: recalled?.user ?? '',
-		alertMessage: sessionExpired ? loginFailureMessage('no-activity') : '',
+		defaultUser: await recalledUser(cookies, selectedServer),
+		alertMessage,
 		driverError: '',
 	};
 };
 
-/** Verifies credentials by connecting, then stores them in the encrypted session and recall cookies. */
-export const attemptLogin = async (cookies: AstroCookies, url: URL, form: { username: string; password: string; server: unknown; }): Promise<LoginAttempt> => {
+/** Verifies credentials by connecting, then starts a new session and sets the login cookies. */
+export const attemptLogin = async (cookies: PhpCookies, form: { username: string; password: string; server: unknown; access: SessionAccess; }): Promise<LoginAttempt> => {
 	const servers = configuredServers();
 	const server = serverByIndex(servers, form.server);
+	const selectedServer = server ? Number(form.server) : 1;
 	const failed = (alertMessage: string, driverError = ''): LoginAttempt => {
-		const selectedServer = server ? serverIndex(servers, serverKey(server)) : 1;
+		// showFailure() drops the password cookie of the server the login was for.
+		cookies.remove(authCookieName(selectedServer));
 		return { status: 'failed', form: { servers, selectedServer, defaultUser: form.username, alertMessage, driverError } };
 	};
 	if (!server) { return failed(CANNOT_LOG_IN_MESSAGE); }
@@ -72,9 +63,6 @@ export const attemptLogin = async (cookies: AstroCookies, url: URL, form: { user
 	} catch (error) {
 		return failed(CANNOT_LOG_IN_MESSAGE, connectionErrorMessage(error));
 	}
-	const cipher = await cookieCipher();
-	const session = { server: serverKey(server), user: form.username, password: form.password, lastActivity: nowSeconds(), token: createSessionToken() };
-	cookies.set(AUTH_COOKIE, await cipher.seal(AUTH_COOKIE, session), cookieOptions(url));
-	cookies.set(RECALL_COOKIE, await cipher.seal(RECALL_COOKIE, { server: serverKey(server), user: form.username }), cookieOptions(url, RECALL_COOKIE_MAX_AGE_SECONDS));
-	return { status: 'signed-in' };
+	await createLoginSession(cookies, selectedServer, form.username, form.password, form.access);
+	return { status: 'signed-in', server: selectedServer };
 };

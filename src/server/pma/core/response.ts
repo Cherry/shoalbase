@@ -1,5 +1,4 @@
 // Port of PhpMyAdmin\ResponseRenderer with its Header and Footer switches: a full HTML page, or the AJAX JSON envelope.
-import { sessionCookieHeaders } from './session.ts';
 import { shellProviders } from './shell-providers.ts';
 import { buildAjaxEnvelope, jsonHttpHeaders, statusHeader } from '../../../lib/pma/ajax-response.ts';
 import { shellConfig } from '../../../lib/pma/config.ts';
@@ -187,11 +186,9 @@ export class ResponseRenderer {
 		return this.status;
 	}
 
-	/** Builds the HTTP response once the body is final, so session changes made while rendering are stored too. */
-	private async finish(body: string | null, status: number, headers: [string, string][]): Promise<Response> {
-		const { session, token, isHttps } = this.context;
-		const cookies = await sessionCookieHeaders(session, token, isHttps);
-		return new Response(body, { status, headers: [...headers, ...cookies.map((line): [string, string] => ['Set-Cookie', line])] });
+	/** Builds the HTTP response once the body is final; dispatch() stores the session after it. */
+	private finish(body: string | null, status: number, headers: [string, string][]): Response {
+		return new Response(body, { status, headers });
 	}
 
 	addHTML(content: string): void {

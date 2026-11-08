@@ -45,6 +45,10 @@ export const serverByIndex = (servers: ServerConfig[], index: unknown): ServerCo
 /** Identifies a server in cookies; host alone is ambiguous when one host serves several ports. */
 export const serverKey = (server: ServerConfig): string => `${server.host}:${server.port}`;
 
-export const findServer = (servers: ServerConfig[], key: string): ServerConfig | undefined => servers.find(server => serverKey(server) === key);
-
-export const serverIndex = (servers: ServerConfig[], key: string): number => servers.findIndex(server => serverKey(server) === key) + 1;
+/** Config::selectServer(): the request's `server` by number or host name, else ServerDefault (1). */
+export const selectServer = (servers: ServerConfig[], requested: unknown): number => {
+	if (typeof requested !== 'string') { return 1; }
+	if (/^\d+$/.test(requested) && serverByIndex(servers, requested)) { return Number(requested); }
+	const byHost = servers.findIndex(server => server.host === requested);
+	return byHost === -1 ? 1 : byHost + 1;
+};

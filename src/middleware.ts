@@ -1,17 +1,13 @@
 import { defineMiddleware } from 'astro:middleware';
 import { waitUntil } from 'cloudflare:workers';
 
-import { AUTH_COOKIE, authSessionState, entryPoint } from '~/lib/auth';
+import { entryPoint } from '~/lib/auth';
 import { createRequestConnection } from '~/lib/connection';
-import { findServer, serverIndex, serverKey } from '~/lib/servers';
-import {
-	configuredServers,
-	cookieCipher,
-	cookieOptions,
-	nowSeconds,
-} from '~/server/auth-runtime';
+import { serverKey } from '~/lib/servers';
 import { withShoalbaseMark } from '~/server/branding';
 import { connectFromWorker } from '~/server/mysql-connector';
+import { requestParams } from '~/server/request-form';
+import { beginSession, requestCookies } from '~/server/session-runtime';
 
 // Apache's own 404 page with ServerSignature off, since the docroot has nothing but phpMyAdmin's PHP scripts and static files.
 // eslint-disable-next-line unicorn/prefer-https -- Apache's doctype is quoted byte for byte.
@@ -44,35 +40,28 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		return next();
 	}
 
-	const cipher = await cookieCipher();
-	const now = nowSeconds();
-	const state = authSessionState(await cipher.open(AUTH_COOKIE, context.cookies.get(AUTH_COOKIE)?.value), now);
-	const servers = configuredServers();
-	const server = state.status === 'valid' ? findServer(servers, state.session.server) : undefined;
-	if (state.status !== 'valid' || !server) {
-		// Only clear a cookie the browser actually sent, so a fresh visitor gets no Set-Cookie that phpMyAdmin would not send.
-		if (context.cookies.has(AUTH_COOKIE)) {
-			context.cookies.delete(AUTH_COOKIE, { path: '/' });
-		}
+	const { locals } = context;
+	const cookies = requestCookies(name => context.cookies.get(name)?.value, context.url, locals);
+	const state = await beginSession(cookies, await requestParams(context.request, context.url, locals), context.request.method);
+	locals.sessionId = state.id;
+	if (state.status === 'signed-out') {
 		// phpMyAdmin shows its login form at whatever index.php URL was requested, so the dispatcher handles signed-out requests itself.
-		context.locals.sessionExpired = state.status === 'expired';
+		locals.sessionExpired = state.expiredValidity;
 		return withShoalbaseMark(await next());
 	}
 
-	const { session } = state;
-	// Sliding expiry: each request restarts phpMyAdmin's LoginCookieValidity inactivity window.
-	context.cookies.set(AUTH_COOKIE, await cipher.seal(AUTH_COOKIE, { ...session, lastActivity: now }), cookieOptions(context.url));
-	context.locals.auth = { user: session.user, host: server.host, server: serverKey(server), serverIndex: serverIndex(servers, serverKey(server)), token: session.token };
-
+	const { config } = state;
+	locals.session = state.session;
+	locals.auth = { user: state.user, host: config.host, server: serverKey(config), serverIndex: state.server, token: state.token };
 	const connection = createRequestConnection({
-		host: server.host,
-		port: server.port,
-		user: session.user,
-		password: session.password,
-		ssl: server.ssl,
-		pin: server.pin,
+		host: config.host,
+		port: config.port,
+		user: state.user,
+		password: state.password,
+		ssl: config.ssl,
+		pin: config.pin,
 	}, connectFromWorker);
-	context.locals.connection = connection;
+	locals.connection = connection;
 	let response: Response;
 	try {
 		response = await next();

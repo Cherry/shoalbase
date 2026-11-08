@@ -1,17 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-	AUTH_COOKIE,
-	LOGIN_COOKIE_VALIDITY_SECONDS,
-	RECALL_COOKIE,
-	authSessionState,
+	authCookieName,
 	connectionErrorMessage,
 	createCookieCipher,
+	createEncryptionKey,
+	createSessionCipher,
+	createSessionId,
 	createSessionToken,
 	entryPoint,
+	isSessionId,
 	loginFailureMessage,
-	recalledLogin,
+	sessionObjectName,
 	tokensMatch,
+	userCookieName,
 } from '~/lib/auth';
 
 const secret = 'a-test-secret-that-is-long-enough-1234';
@@ -40,59 +42,50 @@ describe('cookie cipher', () => {
 
 	it('round-trips values without exposing them in the token', async () => {
 		const cipher = await createCookieCipher(secret);
-		const token = await cipher.seal(AUTH_COOKIE, { user: 'customer', password: 'hunter2' });
+		const token = await cipher.seal(authCookieName(1), { user: 'customer', password: 'hunter2' });
 
 		expect(token).not.toContain('hunter2');
 		expect(token).toMatch(/^[\w-]+$/);
-		expect(await cipher.open(AUTH_COOKIE, token)).toEqual({ user: 'customer', password: 'hunter2' });
+		expect(await cipher.open(authCookieName(1), token)).toEqual({ user: 'customer', password: 'hunter2' });
 	});
 
 	it('uses a fresh IV so equal values produce different tokens', async () => {
 		const cipher = await createCookieCipher(secret);
-		expect(await cipher.seal(AUTH_COOKIE, 'same')).not.toBe(await cipher.seal(AUTH_COOKIE, 'same'));
+		expect(await cipher.seal(authCookieName(1), 'same')).not.toBe(await cipher.seal(authCookieName(1), 'same'));
 	});
 
 	it('rejects tokens that are missing, tampered, moved between cookies, or sealed with another secret', async () => {
 		const cipher = await createCookieCipher(secret);
-		const token = await cipher.seal(AUTH_COOKIE, { user: 'customer' });
+		const token = await cipher.seal(authCookieName(1), { user: 'customer' });
 		const tampered = `${token.slice(0, -2)}${token.endsWith('AA') ? 'BB' : 'AA'}`;
 		const otherCipher = await createCookieCipher(`${secret}-rotated`);
 
-		expect(await cipher.open(AUTH_COOKIE, undefined)).toBeNull();
-		expect(await cipher.open(AUTH_COOKIE, '')).toBeNull();
-		expect(await cipher.open(AUTH_COOKIE, tampered)).toBeNull();
-		expect(await cipher.open(AUTH_COOKIE, '!!not base64!!')).toBeNull();
-		expect(await cipher.open(RECALL_COOKIE, token)).toBeNull();
-		expect(await otherCipher.open(AUTH_COOKIE, token)).toBeNull();
-	});
-});
-
-describe('auth session state', () => {
-	const session = { server: 'db:3306', user: 'customer', password: 'pw', lastActivity: 1000, token: '0123456789abcdef0123456789abcdef' };
-
-	it('accepts a session inside the inactivity window, including its boundary', () => {
-		expect(authSessionState(session, 1000 + LOGIN_COOKIE_VALIDITY_SECONDS)).toEqual({ status: 'valid', session });
+		expect(await cipher.open(authCookieName(1), undefined)).toBeNull();
+		expect(await cipher.open(authCookieName(1), '')).toBeNull();
+		expect(await cipher.open(authCookieName(1), tampered)).toBeNull();
+		expect(await cipher.open(authCookieName(1), '!!not base64!!')).toBeNull();
+		expect(await cipher.open(userCookieName(1), token)).toBeNull();
+		expect(await otherCipher.open(authCookieName(1), token)).toBeNull();
 	});
 
-	it('expires sessions idle longer than LoginCookieValidity', () => {
-		expect(authSessionState(session, 1001 + LOGIN_COOKIE_VALIDITY_SECONDS)).toEqual({ status: 'expired' });
+	it('encrypts password cookies with the session key, which other sessions cannot use', async () => {
+		const key = createEncryptionKey();
+		const cipher = await createSessionCipher(key);
+		const token = await cipher?.seal(authCookieName(1), { password: 'hunter2' }) ?? '';
+
+		const sameKey = await createSessionCipher(key);
+		const otherKey = await createSessionCipher(createEncryptionKey());
+		const secretKey = await createCookieCipher(secret);
+
+		expect(await sameKey?.open(authCookieName(1), token)).toEqual({ password: 'hunter2' });
+		expect(await otherKey?.open(authCookieName(1), token)).toBeNull();
+		expect(await secretKey.open(authCookieName(1), token)).toBeNull();
 	});
 
-	it('treats malformed payloads as no session', () => {
-		expect(authSessionState(null, 1000)).toEqual({ status: 'missing' });
-		expect(authSessionState('token', 1000)).toEqual({ status: 'missing' });
-		expect(authSessionState({ ...session, password: undefined }, 1000)).toEqual({ status: 'missing' });
-		expect(authSessionState({ ...session, lastActivity: '1000' }, 1000)).toEqual({ status: 'missing' });
-		expect(authSessionState({ ...session, server: 1 }, 1000)).toEqual({ status: 'missing' });
-		expect(authSessionState({ ...session, user: null }, 1000)).toEqual({ status: 'missing' });
-		expect(authSessionState({ ...session, token: undefined }, 1000)).toEqual({ status: 'missing' });
-	});
-
-	it('recalls only well-formed username and server pairs', () => {
-		expect(recalledLogin({ server: 'db:3306', user: 'customer', extra: true })).toEqual({ server: 'db:3306', user: 'customer' });
-		expect(recalledLogin({ server: 'db:3306' })).toBeNull();
-		expect(recalledLogin({ user: 'customer' })).toBeNull();
-		expect(recalledLogin(null)).toBeNull();
+	it('refuses session keys it could not have made', async () => {
+		expect(await createSessionCipher(undefined)).toBeNull();
+		expect(await createSessionCipher('short')).toBeNull();
+		expect(await createSessionCipher('!'.repeat(43))).toBeNull();
 	});
 });
 
@@ -100,6 +93,7 @@ describe('login messages', () => {
 	it('matches phpMyAdmin 5.2 failure text', () => {
 		expect(loginFailureMessage('empty-denied')).toBe('Login without a password is forbidden by configuration (see AllowNoPassword)');
 		expect(loginFailureMessage('no-activity')).toBe('You have been automatically logged out due to inactivity of 1440 seconds. Once you log in again, you should be able to resume the work where you left off.');
+		expect(loginFailureMessage('no-activity', 600)).toContain('inactivity of 600 seconds.');
 	});
 
 	it('formats driver errors the way mysqli reports them', () => {
@@ -126,5 +120,22 @@ describe('session CSRF token', () => {
 		expect(tokensMatch(token, token.slice(0, -1))).toBe(false);
 		expect(tokensMatch(token, undefined)).toBe(false);
 		expect(tokensMatch(token, ['array'])).toBe(false);
+	});
+});
+
+describe('session ids', () => {
+	it('look like PHP session ids and only that shape is accepted', () => {
+		const id = createSessionId();
+		expect(isSessionId(id)).toBe(true);
+		expect(createSessionId()).not.toBe(id);
+		expect([id.toUpperCase(), `${id}0`, id.slice(1), '', undefined, 42].map(value => isSessionId(value))).toEqual([false, false, false, false, false, false]);
+	});
+
+	it('name their object with a hash, so the id itself is never an object name', async () => {
+		const id = createSessionId();
+		const name = await sessionObjectName(id);
+		expect(name).toMatch(/^[\da-f]{64}$/);
+		expect(name).not.toContain(id);
+		expect(await sessionObjectName(id)).toBe(name);
 	});
 });

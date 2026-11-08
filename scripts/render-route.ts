@@ -19,10 +19,11 @@ import { drainWaitUntil } from './stubs/cloudflare-workers.ts';
 
 import type { APIContext } from 'astro';
 
-import { createSessionToken } from '~/lib/auth';
+import { createSessionId } from '~/lib/auth';
 import { createRequestConnection } from '~/lib/connection';
 import { connectFromWorker, connectWithMysql2 } from '~/server/mysql-connector';
 import { dispatch } from '~/server/pma/dispatcher';
+import { createScriptSession, startScriptSession } from '~/server/session-runtime';
 
 // The same module the cloudflare:workers alias resolves to, so this sees the dispatcher's waitUntil() calls.
 
@@ -167,7 +168,18 @@ function loginFor(options: Options): Login {
 	return { user: process.env.PMA_RENDER_DB_USER ?? 'customer', password: process.env.PMA_RENDER_DB_PASSWORD ?? 'customerpw' };
 }
 
-async function renderOne(options: Options, server: string, token: string, cookies: ScriptCookies, login: Login): Promise<Response> {
+async function renderOne(options: Options, server: string, sessionId: string, cookies: ScriptCookies, login: Login): Promise<Response> {
+	// As the middleware does: a signed-in request loads the session, and a signed-out one gets a fresh session id.
+	const locals = {} as App.Locals;
+	let token = '';
+	if (!options.signedOut) {
+		const started = await startScriptSession(sessionId);
+		token = started.token;
+		locals.session = started.session;
+		locals.sessionId = sessionId;
+	} else {
+		locals.sessionId = createSessionId();
+	}
 	const params = requestParams(options, server);
 	const target = oracleServer(server);
 	const url = new URL('/index.php', ORIGIN);
@@ -186,7 +198,6 @@ async function renderOne(options: Options, server: string, token: string, cookie
 			url.searchParams.append(key, value);
 		}
 	}
-	const locals = {} as App.Locals;
 	if (!options.signedOut) {
 		locals.auth = { user: login.user, host: target.host, server: `${target.host}:3306`, serverIndex: Number(server), token };
 	}
@@ -221,17 +232,17 @@ async function renderOne(options: Options, server: string, token: string, cookie
 }
 
 async function render(options: Options): Promise<{ status: number; headers: [string, string][]; body: Buffer; }> {
-	const token = createSessionToken();
+	const sessionId = await createScriptSession();
 	const login = loginFor(options);
 	// A signed-in browser already holds pma_lang from the login page, which changes how URLs are built.
 	const cookies = new ScriptCookies(new Map(options.signedOut ? [] : [['pma_lang', 'en'], ...extraCookies()]));
 	for (const step of options.before) {
-		const response = await renderOne(step, options.server, token, cookies, login);
+		const response = await renderOne(step, options.server, sessionId, cookies, login);
 		storeCookies(cookies, response);
 		await response.text();
 	}
 	cookies.setCookies.length = 0;
-	const response = await renderOne(options, options.server, token, cookies, login);
+	const response = await renderOne(options, options.server, sessionId, cookies, login);
 	const headers: [string, string][] = [...response.headers];
 	for (const line of cookies.setCookies) {
 		headers.push(['set-cookie', line]);

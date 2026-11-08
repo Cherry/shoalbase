@@ -9,8 +9,9 @@ Ports of the upstream classes every controller family needs. Look here before wr
 ## Session (`$_SESSION`)
 
 - `context.session` is a `PmaSession` (`src/lib/pma/session.ts`). Read and change `context.session.data` synchronously, using upstream key names (`tmpval`, `userconfig`, `userprefs_autoload`, `profiling`, `edit_next`, `pma_switch_to_new`, ...). `context.session.tmpval` creates `$_SESSION['tmpval']` on first use.
-- The dispatcher loads it from sealed, chunked `pmaSession*` cookies. `ResponseRenderer::response()` stores it again only when it changed. It belongs to one login (new login = empty session, logout deletes it).
-- Size is capped at 4 cookies. `fitSession()` drops the oldest `tmpval.query` entries first, then `tmpval.table_uiprefs`. Keep values small and never store query text.
+- It lives in the session's Durable Object (`src/server/session-object.ts`). The middleware loads it with one call at the start of the request (`beginSession()` in `src/server/session-runtime.ts`), and `dispatch()` stores the top-level keys that changed with one more call after the controller returned, so concurrent requests that change different keys do not overwrite each other. Changes made while a response body is still streaming are not stored.
+- It belongs to one login: a new login starts an empty session with a new id, and logout deletes it. It also holds upstream's own keys (`' PMA_token '`, `encryption_key`, `browser_access_time`); leave those alone.
+- A session larger than `MAX_SESSION_BYTES` (1 MiB) is not stored again, so the request's changes are lost. That is far above what phpMyAdmin keeps, but never store query text or other unbounded values.
 - Do not create keys just by reading. `tableList(session, type, server)` only creates the list when called with `create = true`.
 - Helpers:
   - `rememberQuerySettings(tmpval, md5, settings)` keeps up to 10 browse settings, like `setConfigParamsForDisplayTable()`.
@@ -71,7 +72,6 @@ Ports of the upstream classes every controller family needs. Look here before wr
 
 ## Responses (`response.ts`)
 
-- `ResponseRenderer` adds the session cookies to every response it builds.
 - `ResponseExit` models PHP's `exit` inside `Header::getDisplay()`: the headers go out without a body.
 - Unknown routes (404) and wrong methods (405) are rendered by the dispatcher through the renderer.
 - On a disabled response, a controller's own `Content-Type` header replaces PHP's default one.
