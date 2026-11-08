@@ -38,6 +38,7 @@ CI (`.github/workflows/ci.yml`) runs lint, types, the unit tests and the build o
 
 ## Known differences
 
+- A small "via Shoalbase" credit sits under phpMyAdmin's logo in the navigation panel and on the login page, so users can tell the two apart. The Worker adds it to full HTML pages on the way out (`src/server/branding.ts`), so the oracle diffs never see it, and the visual suite hides it.
 - No pmadb. Features that need it (bookmarks, history, relations stored in pmadb, tracking, designer pages, user groups) behave as upstream does when it is not configured.
 - `$_SESSION` lives in sealed, chunked cookies (at most 4) instead of a PHP session file. When it would overflow, the oldest per-query browse settings are dropped first; see `src/server/pma/core/README.md`.
 - Upstream only treats an account as a grant or create-user account when it can also read `mysql.user`, so an account with `WITH GRANT OPTION` on its own database alone gets "No Privileges", in 5.2.3 and here alike. Accounts that pass the check get the full Privileges UI.

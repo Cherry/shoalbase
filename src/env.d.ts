@@ -7,6 +7,12 @@ interface Env {
 	PMA_SERVERS?: string;
 }
 
+/** The part of workerd's HTMLRewriter that src/server/branding.ts uses; it does not exist in Node. */
+declare class HTMLRewriter {
+	on(selector: string, handlers: { element(element: { append(content: string, options: { html: boolean; }): void; after(content: string, options: { html: boolean; }): void; }): void; }): HTMLRewriter;
+	transform(response: Response): Response;
+}
+
 declare module 'cloudflare:workers' {
 	const env: Env;
 	function waitUntil(promise: Promise<unknown>): void;

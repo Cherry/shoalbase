@@ -28,7 +28,12 @@ async function normalizeVolatileText(page: Page): Promise<void> {
 		// The caret and text-input blink would otherwise differ between the two captures.
 		(document.activeElement as HTMLElement | null)?.blur();
 	});
-	await page.addStyleTag({ content: `${SERVER_SELECT} { width: 160px !important; }` });
+	// The Shoalbase credit is ours alone by design, so it is taken out of the comparison.
+	await page.addStyleTag({ content: `${SERVER_SELECT} { width: 160px !important; } .shoalbase-mark { display: none !important; }` });
+	// navigation.js sized the tree while the credit still showed, so a long tree is resized to the header without it.
+	await page.evaluate(() => {
+		globalThis.dispatchEvent(new Event('resize'));
+	});
 }
 
 /** Full-page screenshot with volatile text normalized and environment-specific regions masked. */

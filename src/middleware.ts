@@ -10,6 +10,7 @@ import {
 	cookieOptions,
 	nowSeconds,
 } from '~/server/auth-runtime';
+import { withShoalbaseMark } from '~/server/branding';
 import { connectFromWorker } from '~/server/mysql-connector';
 
 // Apache's own 404 page with ServerSignature off, since the docroot has nothing but phpMyAdmin's PHP scripts and static files.
@@ -55,7 +56,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		}
 		// phpMyAdmin shows its login form at whatever index.php URL was requested, so the dispatcher handles signed-out requests itself.
 		context.locals.sessionExpired = state.status === 'expired';
-		return next();
+		return withShoalbaseMark(await next());
 	}
 
 	const { session } = state;
@@ -79,5 +80,5 @@ export const onRequest = defineMiddleware(async (context, next) => {
 		await connection.close();
 		throw error;
 	}
-	return closeAfterBody(response, () => connection.close());
+	return closeAfterBody(withShoalbaseMark(response), () => connection.close());
 });
