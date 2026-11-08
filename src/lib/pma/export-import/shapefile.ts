@@ -94,7 +94,9 @@ function readRecord(reader: ShapeReader, hasMeasure: boolean): { shapeType: Valu
 		read += data.length;
 		return unpack(type, data);
 	};
-	const point = (): ShapePoint => { return { x: value('d', 8), y: value('d', 8) }; };
+	const point = (): ShapePoint => {
+		return { x: value('d', 8), y: value('d', 8) };
+	};
 	let shapeType: Value = false;
 	let size = 0;
 	const recordNumber = value('N', 4);
@@ -162,11 +164,14 @@ function readRecord(reader: ShapeReader, hasMeasure: boolean): { shapeType: Valu
 		// The part starts were replaced by point lists, so upstream's part switch never fires and every value goes to part 0.
 		const first = (data.parts as (ShapePart | Value)[])[0];
 		for (let index = 0; index < Number(data.numpoints); index++) {
+			// eslint-disable-next-line unicorn/no-declarations-before-early-exit -- value() advances the read position, so it must run even when the value is dropped.
 			const measured = value('d', 8);
-			if (typeof first === 'object' && first !== null) {
-				first.points[index] ??= {} as ShapePoint;
-				first.points[index][dimension] = measured;
+			if (typeof first !== 'object' || first === null) {
+				continue;
 			}
+
+			first.points[index] ??= {} as ShapePoint;
+			first.points[index][dimension] = measured;
 		}
 	};
 	let error = '';
@@ -308,7 +313,9 @@ export function multiLineStringShape(data: ShapeData): string {
 
 type Coordinates = { x: number; y: number; };
 
-const numeric = (point: ShapePoint): Coordinates => { return { x: Number(point.x), y: Number(point.y) }; };
+const numeric = (point: ShapePoint): Coordinates => {
+	return { x: Number(point.x), y: Number(point.y) };
+};
 
 /** GisPolygon::area(): negative for a clockwise ring. */
 function area(ring: Coordinates[]): number {
@@ -339,7 +346,7 @@ function isPointInsidePolygon(point: Coordinates, polygonPoints: Coordinates[]):
 		const second = polygon[index % polygon.length];
 		const inRange = point.y > Math.min(first.y, second.y) && point.y <= Math.max(first.y, second.y) && point.x <= Math.max(first.x, second.x);
 		if (inRange && first.y !== second.y) {
-			const crossing = ((point.y - first.y) / (second.y - first.y)) + first.x;
+			const crossing = (point.y - first.y) * (second.x - first.x) / (second.y - first.y) + first.x;
 			if (first.x === second.x || point.x <= crossing) {
 				counter++;
 			}

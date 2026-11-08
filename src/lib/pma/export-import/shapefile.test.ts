@@ -92,6 +92,13 @@ describe('readShapeFile', () => {
 		expect(line.parts).toEqual([{ points: [{ x: 0, y: 0, z: 7 }, { x: 1, y: 1, z: 8 }, { z: 9 }] }, { points: [{ x: 2, y: 2 }] }]);
 	});
 
+	it('drops the Z values of a line whose first part never received a point', () => {
+		// Both parts start at point 0, so every point lands in the second part and the first stays a bare start index.
+		const content = [...poly([], [[0, 0], [1, 1]]), ...doubles(0, 1, 7, 8)];
+		const [line] = readShapeFile(shapeFile(13, [[13, content]])).records;
+		expect(line.parts).toEqual([0, { points: [{ x: 0, y: 0 }, { x: 1, y: 1 }] }]);
+	});
+
 	it('reports a record cut off inside its header', () => {
 		const file = shapeFile(1, [[1, doubles(1, 2)]]);
 		expect(readShapeFile(new Uint8Array([...file, 0, 0, 0, 2])).lastError).toBe('Failed to parse record, read=4, size=0');
@@ -125,6 +132,15 @@ describe('WKT writers', () => {
 		expect(multiPolygonShape({ parts: [0] })).toBe('MULTIPOLYGON)');
 		const flat = { parts: [{ points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 0 }] }] };
 		expect(multiPolygonShape(flat)).toBe('MULTIPOLYGON)');
+	});
+
+	it('casts rays across slanted edges of closed and unclosed outer rings when placing a hole', () => {
+		const triangle = { points: [{ x: 0, y: 0 }, { x: 0, y: 10 }, { x: 10, y: 0 }, { x: 0, y: 0 }] };
+		const unclosed = { points: [{ x: 0, y: 0 }, { x: 0, y: 5 }, { x: 10, y: 5 }] };
+		const hole = { points: [{ x: 5, y: 2 }, { x: 6, y: 2 }, { x: 6, y: 3 }, { x: 5, y: 3 }, { x: 5, y: 2 }] };
+		// The hole's surface point (5.9 2.5) lies left of the triangle's slanted edge but right of the other ring's.
+		expect(multiPolygonShape({ parts: [triangle, unclosed, hole] }))
+			.toBe('MULTIPOLYGON(((0 0,0 10,10 0,0 0),(5 2,6 2,6 3,5 3,5 2)),((0 0,0 5,10 5)))');
 	});
 
 	it('finds a point inside tiny holes and self-crossing rings', () => {
