@@ -1,6 +1,6 @@
 /**
  * Live smoke test of a running build (wrangler dev or a deployment) against a real MySQL server, signed in as an unprivileged customer account.
- * Usage: node --experimental-strip-types tests/live-smoke.ts [baseUrl]
+ * Usage: node tests/live-smoke.ts [baseUrl]
  * LIVE_SERVER (default 1) is the 1-based server in the build's PMA_SERVERS; LIVE_USER / LIVE_PASSWORD / LIVE_DATABASE / LIVE_TABLE must exist on it.
  */
 import { upstreamRoutes } from '../src/server/pma/upstream-routes.ts';

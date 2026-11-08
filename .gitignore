@@ -1,6 +1,7 @@
 node_modules/
 coverage/
 /dist/
+/dist-bin/
 .astro/
 .wrangler/
 .astro-dev*.log
@@ -18,3 +19,4 @@ tests/visual/report/
 tests/visual/.results/
 wrangler.log
 .probe/
+website/public/main.js

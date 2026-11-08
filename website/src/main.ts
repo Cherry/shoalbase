@@ -1,14 +1,20 @@
-// Copy buttons and the contour chart behind the hero.
+// Copy buttons and the contour chart behind the hero. `npm run build` in website/ strips the types into public/main.js.
 
-for (const button of document.querySelectorAll('[data-copy-target]')) {
+type Point = [number, number];
+type Noise = (x: number, y: number) => number;
+
+for (const button of document.querySelectorAll<HTMLElement>('[data-copy-target]')) {
 	button.addEventListener('click', async () => {
 		const code = document.querySelector(`#${button.dataset.copyTarget}`);
+		if (!code) {
+			return;
+		}
 		try {
-			await navigator.clipboard.writeText(code.textContent);
+			await navigator.clipboard.writeText(code.textContent ?? '');
 			button.textContent = 'Copied';
 		} catch {
 			// Without clipboard access, select the command so it can be copied by hand.
-			getSelection().selectAllChildren(code);
+			getSelection()?.selectAllChildren(code);
 			button.textContent = 'Selected';
 		}
 		setTimeout(() => {
@@ -18,7 +24,7 @@ for (const button of document.querySelectorAll('[data-copy-target]')) {
 }
 
 // A seeded generator, so the chart looks the same on every visit.
-function mulberry32(seed) {
+function mulberry32(seed: number) {
 	let state = seed;
 	return () => {
 		state = (state + 0x6D_2B_79_F5) >>> 0;
@@ -28,11 +34,11 @@ function mulberry32(seed) {
 	};
 }
 
-function makeNoise(random) {
+function makeNoise(random: () => number): Noise {
 	const size = 64;
 	const lattice = Float32Array.from({ length: size * size }, () => random());
-	const smooth = progress => progress * progress * (3 - (2 * progress));
-	const at = (x, y) => lattice[((y % size) * size) + (x % size)];
+	const smooth = (progress: number) => progress * progress * (3 - (2 * progress));
+	const at = (x: number, y: number) => lattice[((y % size) * size) + (x % size)];
 	return (x, y) => {
 		const x0 = Math.floor(x);
 		const y0 = Math.floor(y);
@@ -44,7 +50,7 @@ function makeNoise(random) {
 	};
 }
 
-function depthField(noise, x, y) {
+function depthField(noise: Noise, x: number, y: number) {
 	let total = 0;
 	let amplitude = 0.55;
 	let frequency = 1;
@@ -57,9 +63,9 @@ function depthField(noise, x, y) {
 }
 
 // Marching squares: for each cell, the edges where the field crosses the level, joined into short segments.
-function contourSegments(grid, columns, rows, cell, level) {
-	const segments = [];
-	const lerp = (from, to) => (level - from) / (to - from);
+function contourSegments(grid: Float32Array, columns: number, rows: number, cell: number, level: number) {
+	const segments: Point[] = [];
+	const lerp = (from: number, to: number) => (level - from) / (to - from);
 	for (let row = 0; row < rows - 1; row++) {
 		for (let column = 0; column < columns - 1; column++) {
 			const topLeft = grid[(row * columns) + column];
@@ -68,7 +74,7 @@ function contourSegments(grid, columns, rows, cell, level) {
 			const bottomLeft = grid[((row + 1) * columns) + column];
 			const x = column * cell;
 			const y = row * cell;
-			const crossings = [];
+			const crossings: Point[] = [];
 			if ((topLeft < level) !== (topRight < level)) {
 				crossings.push([x + (lerp(topLeft, topRight) * cell), y]);
 			}
@@ -89,12 +95,15 @@ function contourSegments(grid, columns, rows, cell, level) {
 	return segments;
 }
 
-function drawChart(canvas) {
+function drawChart(canvas: HTMLCanvasElement) {
 	const ratio = Math.min(window.devicePixelRatio || 1, 2);
 	const { width, height } = canvas.getBoundingClientRect();
 	canvas.width = Math.round(width * ratio);
 	canvas.height = Math.round(height * ratio);
 	const context = canvas.getContext('2d');
+	if (!context) {
+		return;
+	}
 	context.scale(ratio, ratio);
 
 	const styles = getComputedStyle(document.documentElement);
@@ -141,10 +150,10 @@ function drawChart(canvas) {
 	context.globalAlpha = 1;
 }
 
-const canvas = document.querySelector('.chart');
+const canvas = document.querySelector<HTMLCanvasElement>('.chart');
 if (canvas) {
 	const redraw = () => drawChart(canvas);
-	let pending;
+	let pending = 0;
 	const schedule = () => {
 		cancelAnimationFrame(pending);
 		pending = requestAnimationFrame(redraw);
@@ -155,7 +164,7 @@ if (canvas) {
 }
 
 // Respect reduced motion for the looping hero video.
-const heroVideo = document.querySelector('.hero-video video');
+const heroVideo = document.querySelector<HTMLVideoElement>('.hero-video video');
 if (heroVideo && matchMedia('(prefers-reduced-motion: reduce)').matches) {
 	heroVideo.removeAttribute('autoplay');
 	heroVideo.controls = true;

@@ -1,7 +1,7 @@
 // Renders one route through our dispatcher in Node, signed in as the oracle's customer on the local MySQL 8.4.
 // Usage: node scripts/vite-run.ts scripts/render-route.ts [--server <n>] [--user <persona>] [--post] [--ajax] [--headers] [--signed-out] [--before "[POST] <route> [key=value ...]"]... <route> [key=value ...]
-// --server n signs in as on oracle server n (see ORACLE_SERVERS in pma-oracle.mjs); TLS servers connect through the Worker connector.
-// --user signs in as one of PERSONAS in pma-oracle.mjs; it works per request in PMA_RENDER_SERVE mode too, since the argv is posted.
+// --server n signs in as on oracle server n (see ORACLE_SERVERS in pma-oracle.ts); TLS servers connect through the Worker connector.
+// --user signs in as one of PERSONAS in pma-oracle.ts; it works per request in PMA_RENDER_SERVE mode too, since the argv is posted.
 // Env: PMA_RENDER_DB_HOST/PORT override the connection, and PMA_RENDER_DB_USER/PASSWORD the login when --user is not given (default customer/customerpw).
 import { createServer } from 'node:http';
 import process from 'node:process';
@@ -13,7 +13,7 @@ import {
 	personaCredentials,
 	postBody,
 	requestParams,
-} from './pma-oracle.mjs';
+} from './pma-oracle.ts';
 // The same module the cloudflare:workers alias resolves to, so this sees the dispatcher's waitUntil() calls.
 import { drainWaitUntil } from './stubs/cloudflare-workers.ts';
 
@@ -51,7 +51,7 @@ interface Step {
 	params: [string, string][];
 }
 
-// Git Bash rewrites "/route" arguments into Windows paths, so that is undone here as in pma-oracle.mjs.
+// Git Bash rewrites "/route" arguments into Windows paths, so that is undone here as in pma-oracle.ts.
 function normalizeRoute(route: string): string {
 	const mangled = /^[A-Za-z]:[/\\].*?[/\\]Git([/\\].*)?$/.exec(route);
 	let path = route;

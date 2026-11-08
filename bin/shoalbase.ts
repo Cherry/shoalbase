@@ -1,15 +1,19 @@
 #!/usr/bin/env node
 // Sets up a Shoalbase checkout: clones the release matching this package, asks for the servers, writes .dev.vars, and can deploy it.
+// The published package runs the bundle tsdown builds from this file (`npm run build:bin`), so it needs nothing from the clone.
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { createInterface } from 'node:readline/promises';
-import { pathToFileURL } from 'node:url';
 
-import packageJson from '../package.json' with { type: 'json' };
-import { releaseRef, serverEntry } from './installer.mjs';
+// A named JSON import lets the bundler inline just the version; Node cannot run it unbundled, so try the installer with `npm run build:bin`.
+import { version } from '../package.json' with { type: 'json' };
+import { pinFor, releaseRef, serverEntry } from './installer.ts';
+
+import type { ServerEntry } from './installer.ts';
+import type { Interface } from 'node:readline/promises';
 
 const REPOSITORY = 'https://github.com/Cherry/shoalbase.git';
 const HELP = `Usage: npx shoalbase [directory]
@@ -22,20 +26,18 @@ Options:
   -h, --help     Show this help
   -v, --version  Show the version`;
 
-const { version } = packageJson;
-
-function run(command, args, cwd) {
+function run(command: string, args: string[], cwd?: string) {
 	// npm is a .cmd shim on Windows, which Node only starts through a shell; none of its arguments here contain spaces.
 	const shell = process.platform === 'win32' && command === 'npm';
 	execFileSync(command, args, { cwd, stdio: 'inherit', shell });
 }
 
-async function ask(rl, question) {
+async function ask(rl: Interface, question: string) {
 	const answer = await rl.question(question);
 	return answer.trim();
 }
 
-async function askServer(rl, pinFor) {
+async function askServer(rl: Interface): Promise<ServerEntry | undefined> {
 	const host = await ask(rl, 'Server host: ');
 	if (host === '') {
 		return;
@@ -64,11 +66,10 @@ async function askServer(rl, pinFor) {
 	return serverEntry({ host, port, ssl, pin: presented.pin });
 }
 
-async function askServers(rl, directory) {
-	const { pinFor } = await import(pathToFileURL(path.join(directory, 'scripts', 'collect-tls-pins.mjs')).href);
-	const servers = [];
+async function askServers(rl: Interface) {
+	const servers: ServerEntry[] = [];
 	do {
-		const server = await askServer(rl, pinFor);
+		const server = await askServer(rl);
 		if (server) {
 			servers.push(server);
 		}
@@ -76,7 +77,7 @@ async function askServers(rl, directory) {
 	return servers;
 }
 
-async function main(args) {
+async function main(args: string[]) {
 	if (args.includes('-h') || args.includes('--help')) {
 		console.log(HELP);
 		return;
@@ -101,7 +102,7 @@ async function main(args) {
 	let deploy;
 	try {
 		console.log('\nWhich servers can users sign in to? README.md explains how TLS servers are trusted.');
-		const servers = await askServers(rl, directory);
+		const servers = await askServers(rl);
 		writeFileSync(path.join(directory, '.dev.vars'), `PMA_COOKIE_SECRET=${randomBytes(36).toString('base64url')}\nPMA_SERVERS=${JSON.stringify(servers)}\n`);
 		console.log(`\nWrote .dev.vars with ${servers.length} server(s) and a new cookie secret.`);
 		deploy = /^y/i.test(await ask(rl, 'Deploy to Cloudflare now? Wrangler will ask you to sign in. (y/N): '));

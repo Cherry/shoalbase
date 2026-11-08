@@ -41,6 +41,7 @@ jobs:
       - run: npm run test:coverage
       - run: npm run test:workers
       - run: npm run build
+      - run: npm run build:bin
 
   # Fails when actions.lock drifts from the workflows or a locked pin no longer verifies upstream.
   lockfile:

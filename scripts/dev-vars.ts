@@ -1,11 +1,11 @@
 // Writes .dev.vars for the servers of docker/compose.yaml: MySQL 8.4 plain and over TLS, MariaDB over TLS, MySQL 5.7 over TLS.
-// Usage: node scripts/dev-vars.mjs   (after `npm run db:up`; fresh containers get fresh certificates, so run it again after recreating them)
+// Usage: node scripts/dev-vars.ts   (after `npm run db:up`; fresh containers get fresh certificates, so run it again after recreating them)
 // An existing PMA_COOKIE_SECRET is kept so running it again does not sign everyone out.
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { pinFor } from './collect-tls-pins.mjs';
+import { pinFor } from '../bin/installer.ts';
 
 const file = path.join(import.meta.dirname, '..', '.dev.vars');
 const existing = existsSync(file) ? readFileSync(file, 'utf8') : '';

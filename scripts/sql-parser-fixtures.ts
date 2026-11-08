@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Bundles upstream phpmyadmin/sql-parser test fixtures (tests/data/**/*.in and .out) into one gzipped JSON file for the TypeScript port.
-// Usage: node scripts/sql-parser-fixtures.mjs <path to a clone of github.com/phpmyadmin/sql-parser at the vendored tag>
+// Usage: node scripts/sql-parser-fixtures.ts <path to a clone of github.com/phpmyadmin/sql-parser at the vendored tag>
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,14 +9,14 @@ import zlib from 'node:zlib';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const clone = process.argv[2];
 if (!clone) {
-	console.error('Usage: node scripts/sql-parser-fixtures.mjs <sql-parser clone>');
+	console.error('Usage: node scripts/sql-parser-fixtures.ts <sql-parser clone>');
 	process.exit(1);
 }
 const dataDir = path.join(path.resolve(clone), 'tests/data');
 const output = path.join(root, 'src/sql-parser/__tests__/fixtures/upstream.json.gz');
 
-const fixtures = {};
-function walk(dir) {
+const fixtures: Record<string, string> = {};
+function walk(dir: string) {
 	for (const entry of fs.readdirSync(dir, { withFileTypes: true }).toSorted((left, right) => left.name.localeCompare(right.name))) {
 		const full = path.join(dir, entry.name);
 		if (entry.isDirectory()) {

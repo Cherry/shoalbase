@@ -1,4 +1,4 @@
-// Renders phpMyAdmin templates from ASTs precompiled by scripts/precompile-templates.mjs; nothing is parsed at runtime.
+// Renders phpMyAdmin templates from ASTs precompiled by scripts/precompile-templates.ts; nothing is parsed at runtime.
 
 import { createPmaEnvironment } from './environment.ts';
 import { phpScopedNodeExecutor } from './php-loop-scope.ts';

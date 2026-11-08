@@ -1,6 +1,6 @@
 // Fetches a route from the live phpMyAdmin 5.2.3 oracle, as the unprivileged customer unless --user picks another persona.
-// Usage: node scripts/pma-oracle.mjs [--server <n>] [--user <persona>] [--post] [--ajax] [--headers] [--signed-out] [--before "[POST] <route> [key=value ...]"]... <route> [key=value ...]
-// Example: node scripts/pma-oracle.mjs --ajax /database/structure db=customer_db
+// Usage: node scripts/pma-oracle.ts [--server <n>] [--user <persona>] [--post] [--ajax] [--headers] [--signed-out] [--before "[POST] <route> [key=value ...]"]... <route> [key=value ...]
+// Example: node scripts/pma-oracle.ts --ajax /database/structure db=customer_db
 // --server signs in to oracle server n (default 1); ORACLE_SERVERS lists them and the local connection render-route uses for each.
 // --user signs in as one of PERSONAS (customer, pma_grant, pma_creator, root) here, in render-route and in pma-diff.
 // --before runs earlier requests in the same login first, for state kept in $_SESSION (recent tables, preferences, ...).
@@ -15,18 +15,56 @@ export const ORACLE_URL = process.env.PMA_ORACLE_URL ?? 'http://127.0.0.1:8088/'
 const ORACLE_USER = process.env.PMA_ORACLE_USER ?? 'customer';
 const ORACLE_PASSWORD = process.env.PMA_ORACLE_PASSWORD ?? 'customerpw';
 
+export type Param = [string, string];
+
+export interface OracleServer {
+	host: string;
+	name: string;
+	connect: { host: string; port: number; ssl: boolean; };
+}
+
+/** One request: a --before step from parseStep(), or the main request of parseArgs() without its server and login. */
+export interface RequestStep {
+	method: string;
+	ajax: boolean;
+	headers: boolean;
+	signedOut: boolean;
+	route: string;
+	params: Param[];
+	before: RequestStep[];
+}
+
+/** The shared CLI options of the oracle, render and diff scripts. */
+export interface RequestOptions extends RequestStep {
+	server: string;
+	user?: string;
+}
+
+export interface OracleResult {
+	status: number;
+	headers: Param[];
+	body: string;
+	token: string;
+}
+
+interface SendInit {
+	method?: string;
+	body?: URLSearchParams | FormData;
+	headers?: Record<string, string>;
+}
+
 /**
  * The oracle's $cfg['Servers'] by index: host is the name its pages show, connect is where render-route reaches the same database from the host.
  * TLS servers go through the Worker connector, so MariaDB is trusted by its certificate proof as in .dev.vars.
  */
-export const ORACLE_SERVERS = {
+export const ORACLE_SERVERS: Record<string, OracleServer> = {
 	1: { host: 'dbadmin-mysql', name: 'mysql84', connect: { host: '127.0.0.1', port: 33306, ssl: false } },
 	2: { host: 'dbadmin-mariadb', name: 'mariadb123', connect: { host: 'localhost', port: 33307, ssl: true } },
 	3: { host: 'dbadmin-mysql57', name: 'mysql57', connect: { host: 'localhost', port: 33308, ssl: false } },
 };
 
 /** The ORACLE_SERVERS entry for a --server value, failing loudly on an unknown index. */
-export function oracleServer(index) {
+export function oracleServer(index: string): OracleServer {
 	const server = ORACLE_SERVERS[index];
 	if (!server) {
 		throw new Error(`Unknown --server "${index}"; expected one of ${Object.keys(ORACLE_SERVERS).join(', ')}`);
@@ -38,31 +76,33 @@ export function oracleServer(index) {
  * Accounts that exist on every local test server: customer (customer_db only), pma_grant (ALL on customer_db WITH GRANT OPTION),
  * pma_creator (CREATE USER on *.* plus ALL on customer_db) and root, whose password is null because it is read from the container.
  */
-export const PERSONAS = { customer: 'customerpw', pma_grant: 'grantpw', pma_creator: 'creatorpw', root: null };
+export const PERSONAS: Record<string, string | null> = { customer: 'customerpw', pma_grant: 'grantpw', pma_creator: 'creatorpw', root: null };
 
-const rootPasswords = new Map();
+const rootPasswords = new Map<string, string>();
 
 // Root's password stays in the container's env so it never lands in the repo or a log.
-function rootPassword(container) {
-	if (!rootPasswords.has(container)) {
-		const env = JSON.parse(execFileSync('docker', ['inspect', container, '--format', '{{json .Config.Env}}'], { encoding: 'utf8' }));
+function rootPassword(container: string): string {
+	let password = rootPasswords.get(container);
+	if (password === undefined) {
+		const env: string[] = JSON.parse(execFileSync('docker', ['inspect', container, '--format', '{{json .Config.Env}}'], { encoding: 'utf8' }));
 		const entry = env.find(line => /^(?:MYSQL|MARIADB)_ROOT_PASSWORD=/.test(line));
 		if (!entry) {
 			throw new Error(`No root password in the env of container ${container}`);
 		}
-		rootPasswords.set(container, entry.slice(entry.indexOf('=') + 1));
+		password = entry.slice(entry.indexOf('=') + 1);
+		rootPasswords.set(container, password);
 	}
-	return rootPasswords.get(container);
+	return password;
 }
 
-function assertPersona(user) {
+function assertPersona(user: string) {
 	if (!Object.hasOwn(PERSONAS, user)) {
 		throw new Error(`Unknown --user "${user}"; expected one of ${Object.keys(PERSONAS).join(', ')}`);
 	}
 }
 
 /** The user name and password of a --user persona on oracle server n. */
-export function personaCredentials(user, server) {
+export function personaCredentials(user: string, server: string): { user: string; password: string; } {
 	assertPersona(user);
 	let password = PERSONAS[user];
 	if (password === null) {
@@ -72,7 +112,7 @@ export function personaCredentials(user, server) {
 }
 
 /** With PMA_MULTIPART=1, POST bodies go as multipart/form-data and "@file:<path>" values become file uploads ("@file:" alone is an empty file input). */
-export function postBody(params) {
+export function postBody(params: URLSearchParams): URLSearchParams | FormData {
 	if (!process.env.PMA_MULTIPART) {
 		return params;
 	}
@@ -91,7 +131,7 @@ export function postBody(params) {
 }
 
 // Git Bash rewrites a leading-slash argument into a Windows path ("/" becomes "C:/Program Files/Git/"), so undo that and accept routes without the slash.
-function normalizeRoute(route) {
+function normalizeRoute(route: string) {
 	const mangled = route.match(/^[A-Za-z]:[/\\].*?[/\\]Git([/\\].*)?$/);
 	let path = route;
 	if (mangled) {
@@ -103,18 +143,15 @@ function normalizeRoute(route) {
 	return `/${path}`;
 }
 
-/**
- * The route (first word without "=") and the key=value pairs after it.
- * @param {string[]} rest
- * @returns {{ route: string, params: [string, string][] }}
- */
-function routeAndParams(rest) {
+/** The route (first word without "=") and the key=value pairs after it. */
+function routeAndParams(rest: string[]): { route: string; params: Param[]; } {
 	const words = [...rest];
 	let route = '/';
 	if (words.length > 0 && !words[0].includes('=')) {
-		route = normalizeRoute(words.shift());
+		route = normalizeRoute(words[0]);
+		words.shift();
 	}
-	const params = words.map((pair) => {
+	const params = words.map((pair): Param => {
 		const index = pair.indexOf('=');
 		if (index === -1) {
 			throw new Error(`Expected key=value, got "${pair}"`);
@@ -125,19 +162,20 @@ function routeAndParams(rest) {
 }
 
 /** One --before step: an optional method, the route, then key=value pairs separated by spaces. */
-export function parseStep(text) {
+export function parseStep(text: string): RequestStep {
 	const words = text.split(' ').filter(Boolean);
 	let method = 'GET';
 	if (words[0] === 'GET' || words[0] === 'POST') {
-		method = words.shift();
+		method = words[0];
+		words.shift();
 	}
 	return { method, ajax: false, headers: false, signedOut: false, before: [], ...routeAndParams(words) };
 }
 
 /** Parses the shared CLI shape of the oracle, render and diff scripts. */
-export function parseArgs(argv) {
-	const options = { method: 'GET', ajax: false, headers: false, signedOut: false, server: '1', route: '/', params: [], before: [] };
-	const rest = [];
+export function parseArgs(argv: string[]): RequestOptions {
+	const options: RequestOptions = { method: 'GET', ajax: false, headers: false, signedOut: false, server: '1', route: '/', params: [], before: [] };
+	const rest: string[] = [];
 	for (let index = 0; index < argv.length; index++) {
 		const arg = argv[index];
 		if (arg === '--') {
@@ -169,22 +207,19 @@ export function parseArgs(argv) {
 	return { ...options, ...routeAndParams(rest) };
 }
 
-/**
- * PMA_EXTRA_COOKIES="name=value; other=value" adds cookies such as pma_theme to the request after login.
- * @returns {[string, string][]}
- */
-export function extraCookies() {
+/** PMA_EXTRA_COOKIES="name=value; other=value" adds cookies such as pma_theme to the request after login. */
+export function extraCookies(): Param[] {
 	return (process.env.PMA_EXTRA_COOKIES ?? '').split(';').map(pair => pair.trim()).filter(Boolean)
-		.map((pair) => {
+		.map((pair): Param => {
 			const index = pair.indexOf('=');
 			return [pair.slice(0, index), pair.slice(index + 1)];
 		});
 }
 
 class CookieJar {
-	cookies = new Map();
+	cookies = new Map<string, string>();
 
-	store(response) {
+	store(response: Response) {
 		for (const header of response.headers.getSetCookie()) {
 			const [pair] = header.split(';', 1);
 			const index = pair.indexOf('=');
@@ -203,24 +238,24 @@ class CookieJar {
 	}
 }
 
-async function send(jar, url, init = {}) {
-	const headers = { ...init.headers, Cookie: jar.header() };
+async function send(jar: CookieJar, url: URL, init: SendInit = {}) {
+	const headers: Record<string, string> = { ...init.headers, Cookie: jar.header() };
 	// Browsers send Origin on every POST, and the Worker's CSRF check rejects form posts without it.
 	if (init.method === 'POST') {
-		headers.Origin = new URL(url).origin;
+		headers.Origin = url.origin;
 	}
 	const response = await fetch(url, { ...init, redirect: 'manual', headers });
 	jar.store(response);
 	return response;
 }
 
-const hiddenValue = (html, name) => html.match(new RegExp(`name="${name}" value="([^"]*)"`))?.[1] ?? '';
+const hiddenValue = (html: string, name: string) => html.match(new RegExp(`name="${name}" value="([^"]*)"`))?.[1] ?? '';
 
 /**
  * Logs in through the cookie-auth form and returns the jar and the session's CSRF token.
  * Without a persona it signs in as PMA_ORACLE_USER / PMA_ORACLE_PASSWORD (default customer).
  */
-export async function oracleLogin(server = '1', persona) {
+export async function oracleLogin(server = '1', persona?: string) {
 	let credentials = { user: ORACLE_USER, password: ORACLE_PASSWORD };
 	if (persona !== undefined) {
 		credentials = personaCredentials(persona, server);
@@ -241,7 +276,7 @@ export async function oracleLogin(server = '1', persona) {
 	if (login.status !== 302) {
 		throw new Error(`Oracle login failed with HTTP ${login.status}`);
 	}
-	const homeResponse = await send(jar, new URL(login.headers.get('location'), ORACLE_URL));
+	const homeResponse = await send(jar, new URL(login.headers.get('location') ?? '', ORACLE_URL));
 	const home = await homeResponse.text();
 	const token = home.match(/token:"([0-9a-f]+)"/)?.[1];
 	if (!token) {
@@ -250,12 +285,8 @@ export async function oracleLogin(server = '1', persona) {
 	return { jar, token };
 }
 
-/**
- * Request parameters as phpMyAdmin's links send them: off the default server every URL and form carries server=n, without which it falls back to server 1.
- * @param {{ ajax: boolean, params: [string, string][] }} options
- * @param {string} server
- */
-export function requestParams(options, server) {
+/** Request parameters as phpMyAdmin's links send them: off the default server every URL and form carries server=n, without which it falls back to server 1. */
+export function requestParams(options: { ajax: boolean; params: Param[]; }, server: string) {
 	const params = new URLSearchParams(options.params);
 	if (server !== '1' && !params.has('server')) {
 		params.set('server', server);
@@ -266,11 +297,11 @@ export function requestParams(options, server) {
 	return params;
 }
 
-async function sendRequest(jar, token, options, server) {
+async function sendRequest(jar: CookieJar, token: string, options: RequestStep, server: string) {
 	const params = requestParams(options, server);
 	const url = new URL('./index.php', ORACLE_URL);
 	url.searchParams.set('route', options.route);
-	const init = { headers: {} };
+	const init: SendInit & { headers: Record<string, string>; } = { headers: {} };
 	if (options.ajax) {
 		init.headers['X-Requested-With'] = 'XMLHttpRequest';
 	}
@@ -289,7 +320,7 @@ async function sendRequest(jar, token, options, server) {
 }
 
 /** Runs one request against the oracle the way phpMyAdmin's own forms and ajax.js send it. */
-export async function fetchOracle(options) {
+export async function fetchOracle(options: RequestOptions): Promise<OracleResult> {
 	let jar = new CookieJar();
 	let token = '';
 	if (!options.signedOut) {
@@ -298,7 +329,7 @@ export async function fetchOracle(options) {
 	for (const [name, value] of extraCookies()) {
 		jar.cookies.set(name, value);
 	}
-	for (const step of options.before ?? []) {
+	for (const step of options.before) {
 		const stepResponse = await sendRequest(jar, token, step, options.server);
 		await stepResponse.text();
 	}
@@ -306,7 +337,7 @@ export async function fetchOracle(options) {
 	return { status: response.status, headers: [...response.headers], body: await response.text(), token };
 }
 
-export function printResult(result, withHeaders) {
+export function printResult(result: OracleResult, withHeaders: boolean) {
 	if (withHeaders) {
 		process.stdout.write(`HTTP ${result.status}\n`);
 		for (const [name, value] of result.headers) {

@@ -20,7 +20,7 @@ const base64 = (bytes: Bytes): string => btoa(String.fromCodePoint(...bytes));
 
 const hex = (bytes: Bytes): string => Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
 
-/** Pins are base64 SHA-256 digests of the certificate's SubjectPublicKeyInfo, as printed by scripts/collect-tls-pins.mjs. */
+/** Pins are base64 SHA-256 digests of the certificate's SubjectPublicKeyInfo, as printed by scripts/collect-tls-pins.ts. */
 export const spkiPin = async (spki: Bytes): Promise<string> => base64(await sha('SHA-256', spki));
 
 const PACKET_HEADER = 4;

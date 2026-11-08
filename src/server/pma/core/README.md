@@ -81,8 +81,8 @@ Ports of the upstream classes every controller family needs. Look here before wr
 
 ## Diffing session flows
 
-`pma-diff.mjs`, `pma-oracle.mjs` and `render-route.ts` accept repeated `--before "[POST] <route> [k=v ...]"` steps that run first in the same login. Leave out the leading slash, because Git Bash rewrites it. For example:
+`pma-diff.ts`, `pma-oracle.ts` and `render-route.ts` accept repeated `--before "[POST] <route> [k=v ...]"` steps that run first in the same login. Leave out the leading slash, because Git Bash rewrites it. For example:
 
 ```sh
-node scripts/pma-diff.mjs --ajax --before "POST db=customer_db table=players" recent-table recent_table=1
+node scripts/pma-diff.ts --ajax --before "POST db=customer_db table=players" recent-table recent_table=1
 ```

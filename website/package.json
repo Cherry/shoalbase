@@ -4,9 +4,13 @@
 	"description": "Landing page for shoalbase.dev, served as a static assets Worker.",
 	"type": "module",
 	"scripts": {
-		"dev": "wrangler dev",
-		"check": "wrangler deploy --dry-run",
-		"deploy": "wrangler deploy"
+		"build": "node --disable-warning=ExperimentalWarning build.ts",
+		"predev": "npm run build",
+		"dev": "wrangler dev -c wrangler.jsonc",
+		"precheck": "npm run build",
+		"check": "wrangler deploy --dry-run -c wrangler.jsonc",
+		"predeploy": "npm run build",
+		"deploy": "wrangler deploy -c wrangler.jsonc"
 	},
 	"devDependencies": {
 		"wrangler": "4.156.0"

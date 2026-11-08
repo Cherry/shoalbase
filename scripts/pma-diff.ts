@@ -1,7 +1,7 @@
 // Diffs the live phpMyAdmin 5.2.3 oracle against our port for one request, after masking tokens, dates and random ids.
-// Usage: node scripts/pma-diff.mjs [--server <n>] [--user <persona>] [--post] [--ajax] [--headers] [--signed-out] [--out <dir>] [--before "[POST] <route> [key=value ...]"]... <route> [key=value ...]
-// Example: node scripts/pma-diff.mjs --ajax database/structure db=customer_db   (exit code 1 when they differ)
-// --user signs both sides in as a persona (customer, pma_grant, pma_creator or root; see PERSONAS in pma-oracle.mjs).
+// Usage: node scripts/pma-diff.ts [--server <n>] [--user <persona>] [--post] [--ajax] [--headers] [--signed-out] [--out <dir>] [--before "[POST] <route> [key=value ...]"]... <route> [key=value ...]
+// Example: node scripts/pma-diff.ts --ajax database/structure db=customer_db   (exit code 1 when they differ)
+// --user signs both sides in as a persona (customer, pma_grant, pma_creator or root; see PERSONAS in pma-oracle.ts).
 // PMA_DIFF_SESSION_COOKIES=1 also compares the phpMyAdmin, pmaUser-n and pmaAuth-n cookies, which only the full Worker sets on signed-in requests.
 import { execFile } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -10,18 +10,20 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 
-import { fetchOracle, parseArgs } from './pma-oracle.mjs';
+import { fetchOracle, parseArgs } from './pma-oracle.ts';
+
+import type { Param } from './pma-oracle.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CONTEXT_LINES = 3;
 
-const byText = (left, right) => (left < right ? -1 : Number(left > right));
+const byText = (left: string, right: string) => (left < right ? -1 : Number(left > right));
 
 // Headers that only describe the transport or the moment of the request.
 const IGNORED_HEADERS = new Set(['date', 'server', 'connection', 'keep-alive', 'transfer-encoding', 'content-encoding', 'content-length', 'vary', 'x-ob_mode']);
 
 // PMA_RENDER_URL points at a warm render-route process (PMA_RENDER_SERVE), which skips Vite's start-up on every diff.
-async function renderStdout(argv) {
+async function renderStdout(argv: string[]) {
 	if (process.env.PMA_RENDER_URL) {
 		const response = await fetch(process.env.PMA_RENDER_URL, { method: 'POST', body: JSON.stringify(argv) });
 		const text = await response.text();
@@ -35,12 +37,12 @@ async function renderStdout(argv) {
 	return stdout;
 }
 
-async function renderOurs(argv) {
+async function renderOurs(argv: string[]) {
 	const stdout = await renderStdout(['--headers', ...argv]);
 	const split = stdout.indexOf('\n\n');
 	const head = stdout.slice(0, split).split('\n');
 	const status = Number(head[0].replace('HTTP ', ''));
-	const headers = head.slice(1).map((line) => {
+	const headers = head.slice(1).map((line): Param => {
 		const index = line.indexOf(': ');
 		return [line.slice(0, index), line.slice(index + 2)];
 	});
@@ -48,7 +50,7 @@ async function renderOurs(argv) {
 }
 
 /** Masks values that legitimately differ between two runs of the same request. */
-export function normalizeBody(body) {
+export function normalizeBody(body: string) {
 	let text = body
 		.replaceAll(/([?&;]token=|name="token" value="|token:"|"token": ?"|token=)[0-9a-f]{32}/g, '$1<token>')
 		.replaceAll(/(name="set_session" value=")[0-9a-f]+/g, '$1<session>')
@@ -69,10 +71,10 @@ export function normalizeBody(body) {
 	return text;
 }
 
-const cookieName = line => line.slice(0, line.indexOf('='));
+const cookieName = (line: string) => line.slice(0, line.indexOf('='));
 
 // Cookie values are secrets or per-session; names and attributes are compared, in a fixed order.
-function normalizeCookie(value) {
+function normalizeCookie(value: string) {
 	const [pair, ...attributes] = value.split(';').map(part => part.trim());
 	const name = pair.slice(0, pair.indexOf('='));
 	const kept = attributes
@@ -82,7 +84,7 @@ function normalizeCookie(value) {
 	return [`${name}=<value>`, ...kept].join('; ');
 }
 
-function normalizeHeaders(status, headers) {
+function normalizeHeaders(status: number, headers: Param[]) {
 	const lines = [`HTTP ${status}`];
 	const kept = headers
 		.filter(([name]) => !IGNORED_HEADERS.has(name.toLowerCase()))
@@ -105,7 +107,7 @@ function normalizeHeaders(status, headers) {
 }
 
 // JSON responses are spread over lines, with HTML strings printed raw, so their diff reads like a page diff.
-function readable(body) {
+function readable(body: string) {
 	let json;
 	try {
 		json = JSON.parse(body);
@@ -121,7 +123,7 @@ function readable(body) {
 	}).join('\n');
 }
 
-function lcsTable(oldLines, newLines) {
+function lcsTable(oldLines: string[], newLines: string[]) {
 	const table = Array.from({ length: oldLines.length + 1 }, () => new Uint32Array(newLines.length + 1));
 	for (let oldIndex = oldLines.length - 1; oldIndex >= 0; oldIndex--) {
 		for (let newIndex = newLines.length - 1; newIndex >= 0; newIndex--) {
@@ -132,7 +134,7 @@ function lcsTable(oldLines, newLines) {
 }
 
 /** A unified diff of two texts; empty when they are equal. */
-export function unifiedDiff(oldText, newText, oldLabel, newLabel) {
+export function unifiedDiff(oldText: string, newText: string, oldLabel: string, newLabel: string) {
 	const oldLines = oldText.split('\n');
 	const newLines = newText.split('\n');
 	// Trimming the shared head and tail keeps the quadratic LCS table small for large pages.
@@ -147,7 +149,7 @@ export function unifiedDiff(oldText, newText, oldLabel, newLabel) {
 	const oldEnd = oldLines.length - suffix;
 	const newEnd = newLines.length - suffix;
 	const table = lcsTable(oldLines.slice(prefix, oldEnd), newLines.slice(prefix, newEnd));
-	const ops = [];
+	const ops: [string, string, number, number][] = [];
 	let oldIndex = 0;
 	let newIndex = 0;
 	for (; oldIndex < prefix; oldIndex++, newIndex++) {
@@ -171,7 +173,7 @@ export function unifiedDiff(oldText, newText, oldLabel, newLabel) {
 	if (changed.length === 0) {
 		return '';
 	}
-	const hunks = [];
+	const hunks: [number, number][] = [];
 	let start = Math.max(changed[0] - CONTEXT_LINES, 0);
 	let end = Math.min(changed[0] + CONTEXT_LINES, ops.length - 1);
 	for (const index of changed.slice(1)) {
@@ -197,7 +199,7 @@ export function unifiedDiff(oldText, newText, oldLabel, newLabel) {
 	return `${out.join('\n')}\n`;
 }
 
-function takeOutDir(argv) {
+function takeOutDir(argv: string[]) {
 	const index = argv.indexOf('--out');
 	if (index === -1) {
 		return { argv, outDir: null };

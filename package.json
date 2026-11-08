@@ -19,27 +19,26 @@
 	"author": "James Ross <james@jross.me>",
 	"type": "module",
 	"bin": {
-		"shoalbase": "./bin/shoalbase.mjs"
+		"shoalbase": "./dist-bin/shoalbase.mjs"
 	},
 	"files": [
-		"bin/installer.mjs",
-		"bin/shoalbase.mjs"
+		"dist-bin/shoalbase.mjs"
 	],
 	"publishConfig": {
 		"access": "public"
 	},
 	"scripts": {
 		"astro": "astro",
-		"templates": "node scripts/vite-run.ts scripts/precompile-templates.mjs",
+		"templates": "node scripts/vite-run.ts scripts/precompile-templates.ts",
 		"prebuild": "npm run templates",
 		"build": "astro build",
 		"predev": "npm run templates",
 		"dev": "astro dev",
 		"prelint": "npm run templates",
-		"lint": "eslint . && astro check",
+		"lint": "eslint --flag unstable_native_nodejs_ts_config . && astro check",
 		"precheck": "npm run templates",
 		"check": "astro check",
-		"lint:fix": "eslint . --fix",
+		"lint:fix": "eslint --flag unstable_native_nodejs_ts_config . --fix",
 		"preview": "astro preview",
 		"pretest": "npm run templates",
 		"test": "vitest run",
@@ -47,12 +46,14 @@
 		"test:coverage": "vitest run --coverage",
 		"test:workers": "vitest run -c vitest.workers.config.ts",
 		"deploy": "wrangler deploy",
-		"test:live": "node --experimental-strip-types tests/live-smoke.ts",
-		"parity:crawl": "node scripts/pma-crawl.mjs",
+		"test:live": "node tests/live-smoke.ts",
+		"parity:crawl": "node scripts/pma-crawl.ts",
 		"db:up": "docker compose -f docker/compose.yaml up -d --wait",
 		"db:down": "docker compose -f docker/compose.yaml down -v",
-		"dev-vars": "node scripts/dev-vars.mjs",
-		"test:visual": "playwright test -c tests/visual/playwright.config.ts"
+		"dev-vars": "node scripts/dev-vars.ts",
+		"test:visual": "playwright test -c tests/visual/playwright.config.ts",
+		"build:bin": "tsdown bin/shoalbase.ts --out-dir dist-bin",
+		"prepack": "npm run build:bin"
 	},
 	"engines": {
 		"node": ">= 24"
@@ -81,6 +82,7 @@
 		"pixelmatch": "8.0.0",
 		"semantic-release": "25.0.9",
 		"sharp": "0.35.5",
+		"tsdown": "0.23.4",
 		"twing": "7.3.1",
 		"typescript": "6.0.3",
 		"typescript-eslint": "8.72.1",

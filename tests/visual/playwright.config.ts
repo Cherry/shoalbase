@@ -26,7 +26,7 @@ export default defineConfig({
 		navigationTimeout: 30000,
 	},
 	webServer: {
-		command: `node tests/visual/serve.mjs ${port}`,
+		command: `node tests/visual/serve.ts ${port}`,
 		cwd: path.join(import.meta.dirname, '..', '..'),
 		url: `http://127.0.0.1:${port}/index.php`,
 		reuseExistingServer: true,

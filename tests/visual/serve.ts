@@ -1,5 +1,5 @@
 // Serves a private copy of the latest build with wrangler dev, so rebuilding dist mid-run cannot change what is under test.
-// Usage: node tests/visual/serve.mjs [port]   (run `npm run build` first; Playwright starts this as its webServer)
+// Usage: node tests/visual/serve.ts [port]   (run `npm run build` first; Playwright starts this as its webServer)
 import { spawn } from 'node:child_process';
 import { cpSync, existsSync, rmSync } from 'node:fs';
 import path from 'node:path';

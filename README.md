@@ -64,7 +64,7 @@ The login form lists the servers sorted by host. A server's number is its place 
 
 Many MySQL and MariaDB servers present self-signed certificates, which the Workers runtime's TLS rejects. So TLS runs in-process (`src/lib/tls/`, driven by `src/server/mysql-connector.ts`) over a plain TCP socket: TLS 1.3, and TLS 1.2 with (EC)DHE and AES-GCM only. Every handshake signature is verified against the certificate's key, and that key is trusted in one of two ways:
 
-- **MySQL** servers need a `pin`. MySQL's auto-generated certificates persist across restarts and upgrades. Get the pin with `node scripts/collect-tls-pins.mjs <host>[:port]`. If a server's certificate is regenerated, logins fail with a pin mismatch until the pin is updated.
+- **MySQL** servers need a `pin`. MySQL's auto-generated certificates persist across restarts and upgrades. Get the pin with `node scripts/collect-tls-pins.ts <host>[:port]`. If a server's certificate is regenerated, logins fail with a pin mismatch until the pin is updated.
 - **MariaDB** 11.4 and later regenerate their zero-config certificate on every restart, so they are not pinned. Instead the client checks the proof MariaDB sends after authentication, made from the password hash, the scramble and the certificate fingerprint. A man-in-the-middle certificate is rejected before any query runs. This needs a `mysql_native_password` account with a password.
 - A TLS server with neither is refused.
 
@@ -87,7 +87,7 @@ To deploy, run `npm run build`, then `npm run deploy` (which runs `wrangler depl
 
 The app is shaped like phpMyAdmin's docroot behind Apache:
 
-- `/` and `/index.php` both run phpMyAdmin's front controller. `src/server/pma/dispatcher.ts` routes `index.php?route=…` against the upstream route table (`src/server/pma/upstream-routes.ts`, generated from `libraries/routes.php` by `scripts/generate-upstream-routes.mjs`). It enforces phpMyAdmin's CSRF token rules, renders the login form when signed out, handles logout, and answers unknown routes and methods with phpMyAdmin's own 404 and 405 pages.
+- `/` and `/index.php` both run phpMyAdmin's front controller. `src/server/pma/dispatcher.ts` routes `index.php?route=…` against the upstream route table (`src/server/pma/upstream-routes.ts`, generated from `libraries/routes.php` by `scripts/generate-upstream-routes.ts`). It enforces phpMyAdmin's CSRF token rules, renders the login form when signed out, handles logout, and answers unknown routes and methods with phpMyAdmin's own 404 and 405 pages.
 - `/url.php` and `/js/messages.php` are the two scripts that run without a login.
 - Themes, JavaScript and docs are static files in `public/`, at the same URLs phpMyAdmin uses.
 - Any other path is a plain 404, as Apache would answer.
@@ -116,7 +116,7 @@ For a signed-in request, the middleware also prepares one TCP connection with `c
 | `npm run lint` | | ESLint and `astro check`. |
 | `npm test` | | Unit tests in Node. `npm run test:coverage` adds the 100% coverage gate for `src/lib/**`. |
 | `npm run test:workers` | | The session Durable Object and session cookies in workerd, with `@cloudflare/vitest-plugin` (`vitest.workers.config.ts`, `tests/workers/`). |
-| `node scripts/pma-diff.mjs <route> [key=value ...]` | Docker stack | One route, rendered by the oracle and by our dispatcher in Node, diffed. See the header of `scripts/pma-oracle.mjs` for the options. |
+| `node scripts/pma-diff.ts <route> [key=value ...]` | Docker stack | One route, rendered by the oracle and by our dispatcher in Node, diffed. See the header of `scripts/pma-oracle.ts` for the options. |
 | `npm run test:live -- <baseUrl>` | Docker stack, a running build | The docroot, login, tampered cookies, logout, and every GET route, in the built Worker. `LIVE_SERVER` picks the server (1-based). |
 | `npm run test:visual` | Docker stack, `npm run build` | Pixel comparison of screens and interactions against the oracle, with Playwright. |
 | `npm run parity:crawl` | Docker stack | About 270 diffed cases per server, written to `tests/parity-report/`. |

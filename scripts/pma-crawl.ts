@@ -1,4 +1,4 @@
-// Crawls every customer-reachable upstream route through pma-diff.mjs on each oracle server and writes a parity report.
+// Crawls every customer-reachable upstream route through pma-diff.ts on each oracle server and writes a parity report.
 // Usage: npm run parity:crawl -- [--server 1,2,3] [--user <persona> (report goes to users/<persona>/)] [--only <substring> (report goes to partial/)] [--jobs <n>] [--keep] [--no-setup]
 // Creates pc_* scratch objects in customer_db on each server first (dropped again unless --keep), and writes tests/parity-report/.
 // Each differing case is retried once, so a case that matches on the retry is reported as flaky rather than as a gap.
@@ -12,7 +12,43 @@ import { promisify } from 'node:util';
 import { JSDOM } from 'jsdom';
 import mysql from 'mysql2/promise';
 
-import { ORACLE_SERVERS, PERSONAS, fetchOracle } from './pma-oracle.mjs';
+import { ORACLE_SERVERS, PERSONAS, fetchOracle } from './pma-oracle.ts';
+
+import type { Param } from './pma-oracle.ts';
+import type { ChildProcess } from 'node:child_process';
+
+interface CrawlOptions {
+	servers: string[];
+	only: string;
+	jobs: number;
+	keep: boolean;
+	setup: boolean;
+	user?: string;
+}
+
+/** One diffed request: `needs` names the scratch objects it uses, and `error` marks a case that could not be built. */
+interface TestCase {
+	id: string;
+	needs: string[];
+	args: string[];
+	error?: string;
+}
+
+interface CaseResult {
+	status: string;
+	output: string;
+}
+
+interface Row extends CaseResult {
+	server: string;
+	id: string;
+	reproduce: string;
+}
+
+interface Renderer {
+	child: ChildProcess;
+	url: string;
+}
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const REPORT_DIR = path.join(ROOT, 'tests', 'parity-report');
@@ -22,14 +58,14 @@ const DB = 'customer_db';
 const DIFF_TIMEOUT_MS = 180000;
 const RENDER_PORT_BASE = 47800;
 // The --user persona every case signs in as; undefined keeps pma-diff's default customer.
-let persona;
+let persona: string | undefined;
 const userArgs = () => (persona === undefined ? [] : ['--user', persona]);
 
 const run = promisify(execFile);
-const b64 = text => Buffer.from(text).toString('base64');
+const b64 = (text: string) => Buffer.from(text).toString('base64');
 
-function parseCli(argv) {
-	const options = { servers: Object.keys(ORACLE_SERVERS), only: '', jobs: 4, keep: false, setup: true };
+function parseCli(argv: string[]): CrawlOptions {
+	const options: CrawlOptions = { servers: Object.keys(ORACLE_SERVERS), only: '', jobs: 4, keep: false, setup: true };
 	for (let index = 0; index < argv.length; index++) {
 		const arg = argv[index];
 		if (arg === '--server') {
@@ -86,7 +122,7 @@ const SCRATCH_CREATE = [
 	{ object: 'table', sql: 'ANALYZE TABLE pc_parent, pc_child' },
 ];
 
-async function connectScratch(server) {
+async function connectScratch(server: string) {
 	const { host, port, ssl } = ORACLE_SERVERS[server].connect;
 	// The local test servers use self-signed certificates; this connection only manages scratch objects.
 	const tls = ssl ? { rejectUnauthorized: false } : undefined;
@@ -94,9 +130,9 @@ async function connectScratch(server) {
 }
 
 /** Creates the scratch objects and returns the kinds the customer could not create on this server. */
-async function setupScratch(server) {
+async function setupScratch(server: string) {
 	const connection = await connectScratch(server);
-	const missing = new Map();
+	const missing = new Map<string, string>();
 	try {
 		for (const statement of SCRATCH_DROP) {
 			await connection.query(statement);
@@ -108,7 +144,7 @@ async function setupScratch(server) {
 			try {
 				await connection.query(sql);
 			} catch (error) {
-				missing.set(object, error.message);
+				missing.set(object, error instanceof Error ? error.message : String(error));
 			}
 		}
 	} finally {
@@ -117,7 +153,7 @@ async function setupScratch(server) {
 	return missing;
 }
 
-async function dropScratch(server) {
+async function dropScratch(server: string) {
 	const connection = await connectScratch(server);
 	try {
 		for (const statement of SCRATCH_DROP) {
@@ -128,10 +164,10 @@ async function dropScratch(server) {
 	}
 }
 
-const navParams = (aPath, vPath) => [`aPath=${aPath}`, `vPath=${vPath}`, 'pos=0', 'pos2_name=', 'pos2_value=', 'searchClause=', 'searchClause2='];
+const navParams = (aPath: string, vPath: string) => [`aPath=${aPath}`, `vPath=${vPath}`, 'pos=0', 'pos2_name=', 'pos2_value=', 'searchClause=', 'searchClause2='];
 
 /** The SQL tab's form as sql.js submits it to /import. */
-function sqlTab(id, query, db = DB, needs = []) {
+function sqlTab(id: string, query: string, db = DB, needs: string[] = []): TestCase {
 	const goto = db ? 'index.php?route=/database/sql' : 'index.php?route=/server/sql';
 	return {
 		id,
@@ -141,27 +177,27 @@ function sqlTab(id, query, db = DB, needs = []) {
 }
 
 /** A full page load and the ajax_page_request load the menu links make. */
-function page(id, route, params = [], needs = []) {
+function page(id: string, route: string, params: string[] = [], needs: string[] = []): TestCase[] {
 	return [
 		{ id, needs, args: [route, ...params] },
 		{ id: `${id}~ajax`, needs, args: ['--ajax', route, ...params, 'ajax_page_request=true'] },
 	];
 }
 
-const ajax = (id, route, params = [], needs = []) => {
+const ajax = (id: string, route: string, params: string[] = [], needs: string[] = []): TestCase => {
 	return { id, needs, args: ['--ajax', route, ...params] };
 };
-const post = (id, route, params = [], needs = []) => {
+const post = (id: string, route: string, params: string[] = [], needs: string[] = []): TestCase => {
 	return { id, needs, args: ['--post', '--ajax', route, ...params] };
 };
 
-function staticCases() {
+function staticCases(): TestCase[] {
 	const db = `db=${DB}`;
 	const parent = [db, 'table=pc_parent'];
 	const dbPath = `${b64('root')}.${b64(DB)}`;
-	const group = (key, label) => navParams(`${dbPath}.${b64(key)}`, `${dbPath}.${b64(label)}`);
-	const tablePath = [`${dbPath}.${b64('tables')}.${b64('pc_parent')}`, `${dbPath}.${b64('Tables')}.${b64('pc_parent')}`];
-	const browse = (id, params) => post(id, 'sql', [...parent, 'goto=', 'is_browse_distinct=', ...params]);
+	const group = (key: string, label: string) => navParams(`${dbPath}.${b64(key)}`, `${dbPath}.${b64(label)}`);
+	const tablePath: [string, string] = [`${dbPath}.${b64('tables')}.${b64('pc_parent')}`, `${dbPath}.${b64('Tables')}.${b64('pc_parent')}`];
+	const browse = (id: string, params: string[]) => post(id, 'sql', [...parent, 'goto=', 'is_browse_distinct=', ...params]);
 	return [
 		// Server level.
 		...page('home', '/'),
@@ -331,36 +367,36 @@ function staticCases() {
 }
 
 /** Serialises a form the way a browser submits it, minus the per-session token. */
-function formFields(html, selector) {
+function formFields(html: string, selector: string): Param[] | null {
 	const { window } = new JSDOM(html);
-	const form = window.document.querySelector(selector);
+	const form = window.document.querySelector<HTMLFormElement>(selector);
 	if (!form) {
 		return null;
 	}
-	return [...new window.FormData(form)].filter(([key]) => key !== 'token').map(([key, value]) => [key, String(value)]);
+	return [...new window.FormData(form)].filter(([key]) => key !== 'token').map(([key, value]): Param => [key, String(value)]);
 }
 
 const SCRATCH_TABLES = new Set(['pc_parent', 'pc_child', 'pc_view', 'players']);
 const TABLE_LISTS = new Set(['table_select[]', 'table_structure[]', 'table_data[]']);
 
 /** One sendit case per export format the oracle's export form offers, at each level, with the form's own defaults. */
-async function exportCases(server) {
-	const levels = [
+async function exportCases(server: string): Promise<TestCase[]> {
+	const levels: { level: string; route: string; params: Param[]; }[] = [
 		{ level: 'server', route: 'server/export', params: [] },
 		{ level: 'db', route: 'database/export', params: [['db', DB]] },
 		{ level: 'table', route: 'table/export', params: [['db', DB], ['table', 'pc_parent']] },
 	];
-	const cases = [];
+	const cases: TestCase[] = [];
 	for (const { level, route, params } of levels) {
-		const response = await fetchOracle({ method: 'GET', ajax: false, signedOut: false, server, user: persona, route: `/${route}`, params, before: [] });
+		const response = await fetchOracle({ method: 'GET', ajax: false, headers: false, signedOut: false, server, user: persona, route: `/${route}`, params, before: [] });
 		const fields = formFields(response.body, 'form[name="dump"]');
 		if (!fields) {
-			cases.push({ id: `export-${level}-form-missing`, needs: [], error: `No export form on ${route}` });
+			cases.push({ id: `export-${level}-form-missing`, needs: [], args: [], error: `No export form on ${route}` });
 			continue;
 		}
 		// Other agents' tables in customer_db change while the crawl runs, so database exports cover the scratch tables only.
 		const kept = fields.filter(([key, value]) => !TABLE_LISTS.has(key) || SCRATCH_TABLES.has(value));
-		const formats = [...new JSDOM(response.body).window.document.querySelectorAll('#plugins option')].map(option => option.value);
+		const formats = [...new JSDOM(response.body).window.document.querySelectorAll<HTMLOptionElement>('#plugins option')].map(option => option.value);
 		for (const format of formats) {
 			const pairs = kept.filter(([key]) => key !== 'what' && key !== 'output_format');
 			pairs.push(['what', format], ['output_format', 'sendit']);
@@ -370,21 +406,23 @@ async function exportCases(server) {
 	return cases;
 }
 
-async function diffOnce(server, testCase, outDir, renderUrl) {
-	const script = path.join(ROOT, 'scripts', 'pma-diff.mjs');
+async function diffOnce(server: string, testCase: TestCase, outDir: string, renderUrl: string): Promise<CaseResult> {
+	const script = path.join(ROOT, 'scripts', 'pma-diff.ts');
 	const env = { ...process.env, PMA_RENDER_URL: renderUrl };
 	try {
 		const { stdout } = await run(process.execPath, [script, '--server', server, ...userArgs(), '--out', outDir, ...testCase.args], { cwd: ROOT, env, maxBuffer: 256 * 1024 * 1024, timeout: DIFF_TIMEOUT_MS });
 		return { status: 'identical', output: stdout };
 	} catch (error) {
-		if (error.code === 1 && typeof error.stdout === 'string' && error.stdout.startsWith('--- oracle')) {
-			return { status: 'diff', output: error.stdout };
+		// execFile rejects with the exit code and both outputs attached to the error.
+		const failure = error as Error & { code?: number; stdout?: string; stderr?: string; };
+		if (failure.code === 1 && typeof failure.stdout === 'string' && failure.stdout.startsWith('--- oracle')) {
+			return { status: 'diff', output: failure.stdout };
 		}
-		return { status: 'error', output: `${error.stdout ?? ''}${error.stderr ?? ''}${error.message}` };
+		return { status: 'error', output: `${failure.stdout ?? ''}${failure.stderr ?? ''}${failure.message}` };
 	}
 }
 
-async function runCase(server, testCase, missing, renderUrl) {
+async function runCase(server: string, testCase: TestCase, missing: Map<string, string>, renderUrl: string): Promise<CaseResult> {
 	const blocked = testCase.needs.filter(object => missing.has(object));
 	if (testCase.error) {
 		return { status: 'error', output: testCase.error };
@@ -411,8 +449,8 @@ async function runCase(server, testCase, missing, renderUrl) {
 	return result;
 }
 
-async function pool(items, jobs, worker) {
-	const results = Array.from({ length: items.length });
+async function pool<Item, Result>(items: Item[], jobs: number, worker: (item: Item, lane: number) => Promise<Result>) {
+	const results = Array.from<Result>({ length: items.length });
 	let next = 0;
 	const lanes = Array.from({ length: Math.min(jobs, items.length) }, async (_, lane) => {
 		while (next < items.length) {
@@ -424,7 +462,7 @@ async function pool(items, jobs, worker) {
 	return results;
 }
 
-async function warmUp(url, server) {
+async function warmUp(url: string, server: string) {
 	const deadline = Date.now() + 120000;
 	for (;;) {
 		try {
@@ -443,8 +481,8 @@ async function warmUp(url, server) {
 }
 
 /** Starts one warm render-route process per lane, so each diff skips Vite's start-up. */
-async function startRenderers(server, count) {
-	const renderers = [];
+async function startRenderers(server: string, count: number) {
+	const renderers: Renderer[] = [];
 	for (let lane = 0; lane < count; lane++) {
 		const port = RENDER_PORT_BASE + lane;
 		const child = spawn(process.execPath, ['scripts/vite-run.ts', 'scripts/render-route.ts'], { cwd: ROOT, env: { ...process.env, PMA_RENDER_SERVE: String(port) }, stdio: 'ignore' });
@@ -457,7 +495,7 @@ async function startRenderers(server, count) {
 }
 
 // The whole process tree is stopped, so nothing a renderer started can outlive the crawl.
-function stopRenderers(renderers) {
+function stopRenderers(renderers: Renderer[]) {
 	for (const { child } of renderers) {
 		if (process.platform === 'win32') {
 			spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
@@ -467,16 +505,16 @@ function stopRenderers(renderers) {
 	}
 }
 
-const reproduce = (server, testCase) => {
-	const quoted = (testCase.args ?? []).map(arg => (/^[\w./=[\]-]+$/.test(arg) ? arg : `'${arg.replaceAll('\'', String.raw`'\''`)}'`));
-	return `node scripts/pma-diff.mjs --server ${server} ${[...userArgs(), ...quoted].join(' ')}`;
+const reproduce = (server: string, testCase: TestCase) => {
+	const quoted = testCase.args.map(arg => (/^[\w./=[\]-]+$/.test(arg) ? arg : `'${arg.replaceAll('\'', String.raw`'\''`)}'`));
+	return `node scripts/pma-diff.ts --server ${server} ${[...userArgs(), ...quoted].join(' ')}`;
 };
 
 /** Changed lines of a unified diff that do not pair up with an opposite line once digits are masked, so live counters and timings drop out. */
-function nonNumericChanges(diff) {
-	const mask = line => line.slice(1).replaceAll(/[\d.,]+/g, '#').replaceAll(/\s+/g, ' ');
-	const removed = new Map();
-	const added = [];
+function nonNumericChanges(diff: string) {
+	const mask = (line: string) => line.slice(1).replaceAll(/[\d.,]+/g, '#').replaceAll(/\s+/g, ' ');
+	const removed = new Map<string, number>();
+	const added: string[] = [];
 	for (const line of diff.split('\n')) {
 		if (line.startsWith('--- ') || line.startsWith('+++ ')) {
 			continue;
@@ -498,7 +536,7 @@ function nonNumericChanges(diff) {
 	return unmatched.length + removed.values().reduce((sum, count) => sum + count, 0);
 }
 
-function writeReport(rows, missingByServer) {
+function writeReport(rows: Row[], missingByServer: Record<string, Map<string, string>>) {
 	const statuses = ['identical', 'diff', 'flaky', 'error', 'skipped'];
 	const lines = [
 		'# Parity crawl',
@@ -548,8 +586,8 @@ async function main() {
 	}
 	rmSync(reportDir, { recursive: true, force: true });
 	mkdirSync(reportDir, { recursive: true });
-	const missingByServer = {};
-	const rows = [];
+	const missingByServer: Record<string, Map<string, string>> = {};
+	const rows: Row[] = [];
 	try {
 		// Servers run one after another with fresh render processes, so no module-level cache carries over between them.
 		for (const server of options.servers) {
