@@ -5,7 +5,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 	<title>Shoalbase</title>
-	<meta name="description" content="Shoalbase is phpMyAdmin, ported to TypeScript and running on Cloudflare Workers. The same pages your users know, with no PHP, web server or session store. Open source.">
+	<meta name="description" content="Shoalbase is phpMyAdmin, ported to TypeScript and running on Cloudflare Workers. The same pages your users know, with no PHP or web server to run. Open source.">
 	<meta name="theme-color" content="#f4f8f8" media="(prefers-color-scheme: light)">
 	<meta name="theme-color" content="#0a1820" media="(prefers-color-scheme: dark)">
 	<link rel="canonical" href="https://shoalbase.dev/">
@@ -49,7 +49,7 @@
 				<div class="hero-copy">
 					<p class="eyebrow">phpMyAdmin on Cloudflare Workers</p>
 					<h1>phpMyAdmin, <em>sounded out for Workers.</em></h1>
-					<p class="lede">Shoalbase is phpMyAdmin ported to TypeScript and run on Cloudflare Workers. The pages your users know, with no PHP, web server or session store underneath.</p>
+					<p class="lede">Shoalbase is phpMyAdmin ported to TypeScript and run on Cloudflare Workers. The pages your users know, with no PHP or web server to run.</p>
 					<div class="cta-row">
 						<a class="deploy" href="https://deploy.workers.cloudflare.com/?url=https://github.com/Cherry/shoalbase">
 							<img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare" width="186" height="32">
@@ -134,8 +134,8 @@
 					<p>Users sign in with their own MySQL or MariaDB account. For each request the Worker opens a TCP connection with <code>cloudflare:sockets</code>, runs the page's queries on it and closes it when the response is sent.</p>
 				</div>
 				<div class="how-item">
-					<h3>Sessions in sealed cookies</h3>
-					<p>Credentials and phpMyAdmin's session live in encrypted, <code>HttpOnly</code> cookies that expire after 24 minutes of inactivity, as in phpMyAdmin. There is no database or KV store behind it.</p>
+					<h3>Sessions in Durable Objects</h3>
+					<p>Each session lives in its own Durable Object, the way PHP keeps a session file. The password cookie is encrypted with a key only that session holds, so logging out ends it everywhere. Sessions expire after 24 minutes idle, and their storage is deleted.</p>
 				</div>
 				<div class="how-item">
 					<h3>TLS to self-signed servers</h3>
