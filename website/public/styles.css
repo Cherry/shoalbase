@@ -1,0 +1,598 @@
+/* Layout: a nautical chart. Pale water ground, contour lines behind the hero, depth soundings for the facts, chart magenta for emphasis. */
+:root {
+	--water: #f4f8f8;
+	--shallows: #d9ecef;
+	--land: #efe5c4;
+	--ink: #11293a;
+	--ink-soft: #476272;
+	--rule: #b9d2da;
+	--magenta: #a8226f;
+	--magenta-ink: #ffffff;
+	--contour: rgb(17 41 58 / 0.13);
+	--window: #ffffff;
+	--shadow: rgb(17 41 58 / 0.14);
+
+	--display: 'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif;
+	--body: 'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif;
+	--mono: 'Chivo Mono', 'Cascadia Mono', 'Consolas', monospace;
+
+	--step--1: 0.875rem;
+	--step-0: 1.0625rem;
+	--step-1: 1.3125rem;
+	--step-2: 1.75rem;
+	--step-3: clamp(2.5rem, 1.6rem + 3.6vw, 4.25rem);
+	--measure: 65ch;
+	--radius: 10px;
+}
+
+/* Night chart: the same features, dimmed for the dark. */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--water: #0a1820;
+		--shallows: #10303c;
+		--land: #2c2a1f;
+		--ink: #dbe7ec;
+		--ink-soft: #93adb9;
+		--rule: #1f4351;
+		--magenta: #e5609f;
+		--magenta-ink: #1a0712;
+		--contour: rgb(219 231 236 / 0.1);
+		--window: #0f222c;
+		--shadow: rgb(0 0 0 / 0.45);
+		color-scheme: dark;
+	}
+}
+
+:root[data-theme="dark"] {
+	--water: #0a1820;
+	--shallows: #10303c;
+	--land: #2c2a1f;
+	--ink: #dbe7ec;
+	--ink-soft: #93adb9;
+	--rule: #1f4351;
+	--magenta: #e5609f;
+	--magenta-ink: #1a0712;
+	--contour: rgb(219 231 236 / 0.1);
+	--window: #0f222c;
+	--shadow: rgb(0 0 0 / 0.45);
+	color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	scroll-behavior: smooth;
+	padding-top: env(safe-area-inset-top, 0px);
+	padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+body {
+	margin: 0;
+	background: var(--water);
+	color: var(--ink);
+	font-family: var(--body);
+	font-size: var(--step-0);
+	line-height: 1.6;
+	-webkit-font-smoothing: antialiased;
+}
+
+img,
+video {
+	max-width: 100%;
+	display: block;
+}
+
+a {
+	color: inherit;
+	text-decoration-color: var(--magenta);
+	text-underline-offset: 0.2em;
+}
+
+a:hover {
+	color: var(--magenta);
+}
+
+:focus-visible {
+	outline: 2px solid var(--magenta);
+	outline-offset: 3px;
+	border-radius: 4px;
+}
+
+code {
+	font-family: var(--mono);
+	font-size: 0.9em;
+	line-height: 1;
+}
+
+h1,
+h2,
+h3 {
+	font-family: var(--display);
+	font-weight: 800;
+	line-height: 1.05;
+	letter-spacing: -0.03em;
+	text-wrap: balance;
+	margin: 0;
+}
+
+p {
+	margin: 0;
+}
+
+.wrap {
+	width: 100%;
+	max-width: 1180px;
+	margin-inline: auto;
+	padding-left: max(20px, env(safe-area-inset-left, 0px));
+	padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+
+.skip {
+	position: absolute;
+	left: -9999px;
+}
+
+.skip:focus {
+	left: 16px;
+	top: 16px;
+	z-index: 10;
+	background: var(--window);
+	padding: 8px 12px;
+}
+
+/* Header */
+.site-header {
+	position: relative;
+	z-index: 2;
+}
+
+.header-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding-block: 20px;
+}
+
+.wordmark {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	text-decoration: none;
+	font-family: var(--display);
+	font-size: var(--step-1);
+	font-weight: 800;
+	letter-spacing: -0.02em;
+}
+
+.header-nav {
+	display: flex;
+	gap: 22px;
+	font-size: var(--step--1);
+	font-weight: 500;
+}
+
+.header-nav a {
+	text-decoration: none;
+}
+
+/* Hero */
+.hero {
+	position: relative;
+	overflow: hidden;
+	padding-block: 24px 72px;
+}
+
+.chart {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+
+.hero-grid {
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+	gap: 48px;
+	align-items: center;
+}
+
+.hero-copy {
+	display: grid;
+	gap: 22px;
+	min-width: 0;
+}
+
+/* Mono labels in chart magenta, like the pencilled marks on a sounder trace. */
+.eyebrow,
+.section-label,
+.step-title,
+.caption-label {
+	font-family: var(--mono);
+	font-size: 0.8125rem;
+	font-weight: 500;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--magenta);
+}
+
+h1 {
+	font-size: var(--step-3);
+	line-height: 0.95;
+	letter-spacing: -0.035em;
+}
+
+h1 em {
+	display: block;
+	font-style: normal;
+	color: var(--magenta);
+}
+
+.lede {
+	max-width: 46ch;
+	font-size: var(--step-1);
+	line-height: 1.5;
+	color: var(--ink-soft);
+}
+
+.cta-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 14px;
+}
+
+.deploy {
+	display: inline-block;
+	border-radius: 6px;
+}
+
+.deploy img {
+	height: 40px;
+	width: auto;
+}
+
+.command {
+	display: inline-flex;
+	align-items: center;
+	max-width: 100%;
+	border: 1px solid var(--rule);
+	border-radius: 8px;
+	background: var(--window);
+	overflow: hidden;
+}
+
+.command code {
+	padding: 8px 12px;
+	white-space: nowrap;
+	overflow-x: auto;
+	min-width: 0;
+}
+
+.command code::before {
+	content: '$ ';
+	color: var(--ink-soft);
+}
+
+.copy {
+	align-self: stretch;
+	border: 0;
+	border-left: 1px solid var(--rule);
+	background: var(--shallows);
+	color: var(--ink);
+	font: 600 var(--step--1) / 1 var(--body);
+	padding-inline: 14px;
+	cursor: pointer;
+}
+
+.copy:hover {
+	background: var(--magenta);
+	color: var(--magenta-ink);
+}
+
+/* App windows around the videos */
+.window {
+	margin: 0;
+	border: 1px solid var(--rule);
+	border-radius: var(--radius);
+	background: var(--window);
+	box-shadow: 0 24px 60px -24px var(--shadow);
+	overflow: hidden;
+}
+
+.window video {
+	width: 100%;
+	aspect-ratio: 16 / 9;
+	object-fit: cover;
+	background: var(--shallows);
+}
+
+.window-bar {
+	display: flex;
+	gap: 6px;
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--rule);
+}
+
+.window-bar span {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--rule);
+}
+
+/* Shared section rhythm */
+.soundings,
+.features,
+.how,
+.start {
+	padding-block: 72px;
+	border-top: 1px solid var(--rule);
+}
+
+.soundings > .wrap,
+.features > .wrap {
+	display: grid;
+	gap: 18px;
+}
+
+.section-intro {
+	max-width: 24ch;
+	font-family: var(--display);
+	font-size: clamp(2rem, 1.4rem + 2vw, 2.75rem);
+	font-weight: 800;
+	line-height: 1.05;
+	letter-spacing: -0.03em;
+	text-wrap: balance;
+}
+
+/* Soundings: each figure is read off the chart like a depth, with its unit beside it. */
+.sounding-list {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 28px;
+	margin: 24px 0 0;
+}
+
+.sounding {
+	display: grid;
+	align-content: start;
+	gap: 8px;
+	padding-top: 16px;
+	border-top: 2px solid var(--ink);
+}
+
+.sounding dt {
+	font-family: var(--display);
+	font-size: clamp(2.75rem, 2rem + 2.5vw, 3.5rem);
+	font-weight: 800;
+	letter-spacing: -0.03em;
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+}
+
+.sounding dt small {
+	font-size: 0.5em;
+	color: var(--ink-soft);
+}
+
+.sounding dd {
+	margin: 0;
+	color: var(--ink-soft);
+	font-size: var(--step--1);
+	max-width: 30ch;
+}
+
+.footnote {
+	font-size: var(--step--1);
+	color: var(--ink-soft);
+}
+
+/* Feature reel */
+.features {
+	background: var(--shallows);
+}
+
+.reel {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 40px 32px;
+	margin-top: 16px;
+}
+
+.reel-item {
+	display: grid;
+	gap: 14px;
+	margin: 0;
+	min-width: 0;
+}
+
+.reel-item figcaption {
+	max-width: 52ch;
+	color: var(--ink-soft);
+}
+
+.caption-label {
+	display: block;
+	margin-bottom: 4px;
+}
+
+.reel-item .window {
+	aspect-ratio: 16 / 9;
+}
+
+.reel-item .window video {
+	height: 100%;
+}
+
+/* How it works */
+.how-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 36px 48px;
+}
+
+.how-grid .section-label {
+	grid-column: 1 / -1;
+}
+
+.how-item {
+	display: grid;
+	gap: 10px;
+	min-width: 0;
+}
+
+.how-item h3 {
+	font-size: var(--step-1);
+}
+
+.how-item p {
+	color: var(--ink-soft);
+	max-width: var(--measure);
+}
+
+/* Get started */
+.start {
+	background: var(--land);
+}
+
+.start-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 48px;
+	align-items: start;
+}
+
+.start-copy {
+	display: grid;
+	gap: 18px;
+	min-width: 0;
+}
+
+.start-copy h2 {
+	font-size: var(--step-3);
+}
+
+.start-copy > p {
+	max-width: 50ch;
+	color: var(--ink-soft);
+}
+
+.steps {
+	display: grid;
+	gap: 18px;
+	margin: 8px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.steps li {
+	display: grid;
+	gap: 8px;
+	justify-items: start;
+	min-width: 0;
+}
+
+.config {
+	display: grid;
+	gap: 10px;
+	min-width: 0;
+}
+
+.config-label {
+	font-size: var(--step--1);
+	color: var(--ink-soft);
+}
+
+.config pre {
+	margin: 0;
+	padding: 18px 20px;
+	border: 1px solid var(--rule);
+	border-radius: var(--radius);
+	background: var(--window);
+	overflow-x: auto;
+	font-size: var(--step--1);
+	line-height: 1.55;
+}
+
+.config-note {
+	font-size: var(--step--1);
+	color: var(--ink-soft);
+}
+
+/* Footer */
+.site-footer {
+	padding-block: 40px;
+	border-top: 1px solid var(--rule);
+	font-size: var(--step--1);
+	color: var(--ink-soft);
+}
+
+.footer-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 3fr) minmax(0, 3fr) auto;
+	gap: 32px;
+}
+
+.footer-nav {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+@media (max-width: 900px) {
+	.hero-grid,
+	.start-grid,
+	.footer-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.sounding-list {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 640px) {
+	.reel,
+	.how-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.header-nav a:not(:last-child) {
+		display: none;
+	}
+
+	.sounding-list {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	html {
+		scroll-behavior: auto;
+	}
+}
+
+/* Keeps the contours out from under the headline. */
+.chart {
+	mask-image: linear-gradient(100deg, transparent 18%, #000 58%);
+}
+
+.not-found {
+	display: grid;
+	gap: 18px;
+	padding-block: 18vh;
+}
+
+/* Stacked, the copy sits above the video, so the chart only shows around the video. */
+@media (max-width: 900px) {
+	.chart {
+		mask-image: linear-gradient(to bottom, transparent 50%, #000 78%);
+	}
+}

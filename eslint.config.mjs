@@ -11,7 +11,7 @@ const withJsonIgnore = configs => configs.map((config) => {
 
 export default [
 	{
-		ignores: ['dist/**', '.visual-dist/**', 'coverage/**', '.wrangler/**', '.reference/**', '.research-phpmyadmin/**', '**/.astro/**', 'worker-configuration.d.ts', 'src/generated/**', 'vendor/**', 'public/js/**', 'public/doc/**', 'tests/fixtures/**', 'tests/parity-report/**', 'tests/visual/report/**', 'tests/visual/.results/**'],
+		ignores: ['dist/**', '.visual-dist/**', 'coverage/**', '.wrangler/**', '.reference/**', '.research-phpmyadmin/**', '**/.astro/**', 'worker-configuration.d.ts', 'src/generated/**', 'vendor/**', 'public/js/**', 'public/doc/**', 'tests/fixtures/**', 'tests/parity-report/**', 'tests/visual/report/**', 'tests/visual/.results/**', 'website/package-lock.json', 'website/node_modules/**', '**/.dist/**', '**/out/**'],
 	},
 	...withJsonIgnore(nodecraft.configs.typescript),
 	...nodecraft.configs.json,
