@@ -1,0 +1,4 @@
+# At least 32 random characters, such as the output of `openssl rand -base64 36`; the placeholder is too short on purpose so it can't be deployed.
+PMA_COOKIE_SECRET=change-me
+# The MySQL and MariaDB servers users can sign in to, as a JSON array; see README.md. `npm run dev-vars` writes both values for the Docker test servers.
+PMA_SERVERS=[{"host":"mysql.example.com"}]

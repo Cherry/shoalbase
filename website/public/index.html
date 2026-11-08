@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<title>Shoalbase</title>
+	<meta name="description" content="Shoalbase is phpMyAdmin, ported to TypeScript and running on Cloudflare Workers. The same pages your users know, with no PHP or web server to run. Open source.">
+	<meta name="theme-color" content="#f4f8f8" media="(prefers-color-scheme: light)">
+	<meta name="theme-color" content="#0a1820" media="(prefers-color-scheme: dark)">
+	<link rel="canonical" href="https://shoalbase.dev/">
+	<link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+
+	<meta property="og:type" content="website">
+	<meta property="og:site_name" content="Shoalbase">
+	<meta property="og:url" content="https://shoalbase.dev/">
+	<meta property="og:title" content="Shoalbase">
+	<meta property="og:description" content="phpMyAdmin, ported to Cloudflare Workers with page-for-page parity. Open source.">
+	<meta name="twitter:card" content="summary_large_image">
+
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@400;500;600&family=Schibsted+Grotesk:wght@400;500;700;800&display=swap">
+	<link rel="stylesheet" href="/styles.css">
+	<script src="/main.js" defer></script>
+</head>
+
+<body>
+	<a class="skip" href="#main">Skip to content</a>
+
+	<header class="site-header">
+		<div class="wrap header-row">
+			<a class="wordmark" href="/" aria-label="Shoalbase home">
+				<img src="/images/favicon.svg" alt="" width="28" height="28">
+				<span>Shoalbase</span>
+			</a>
+			<nav class="header-nav" aria-label="Project links">
+				<a href="#features">Features</a>
+				<a href="#get-started">Get started</a>
+				<a href="https://github.com/Cherry/shoalbase">GitHub</a>
+			</nav>
+		</div>
+	</header>
+
+	<main id="main">
+		<section class="hero">
+			<canvas class="chart" aria-hidden="true"></canvas>
+			<div class="wrap hero-grid">
+				<div class="hero-copy">
+					<p class="eyebrow">phpMyAdmin on Cloudflare Workers</p>
+					<h1>phpMyAdmin, <em>sounded out for Workers.</em></h1>
+					<p class="lede">Shoalbase is phpMyAdmin ported to TypeScript and run on Cloudflare Workers. The pages your users know, with no PHP or web server to run.</p>
+					<div class="cta-row">
+						<a class="deploy" href="https://deploy.workers.cloudflare.com/?url=https://github.com/Cherry/shoalbase">
+							<img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare" width="186" height="32">
+						</a>
+						<div class="command" data-copy-group>
+							<code id="hero-command">npx shoalbase my-shoalbase</code>
+							<button type="button" class="copy" data-copy-target="hero-command">Copy</button>
+						</div>
+					</div>
+				</div>
+				<figure class="hero-video window">
+					<div class="window-bar" aria-hidden="true"><span></span><span></span><span></span></div>
+					<video src="/videos/browse-and-edit.mp4" poster="/videos/browse-and-edit.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Browsing a table, sorting it and editing a cell in Shoalbase"></video>
+				</figure>
+			</div>
+		</section>
+
+		<section class="soundings" aria-labelledby="soundings-title">
+			<div class="wrap">
+				<h2 id="soundings-title" class="section-label">Soundings</h2>
+				<p class="section-intro">Checked against the real phpMyAdmin on every push.</p>
+				<dl class="sounding-list">
+					<div class="sounding">
+						<dt>177<small>/177</small></dt>
+						<dd>phpMyAdmin routes ported, each diffed against the original.</dd>
+					</div>
+					<div class="sounding">
+						<dt>61</dt>
+						<dd>screens and interactions matched pixel for pixel on every push.</dd>
+					</div>
+					<div class="sounding">
+						<dt>3</dt>
+						<dd>database servers in CI: MySQL 5.7, MySQL 8.4 and MariaDB 12.</dd>
+					</div>
+					<div class="sounding">
+						<dt>0</dt>
+						<dd>servers for you to run. One Worker, two secrets.</dd>
+					</div>
+				</dl>
+				<p class="footnote">The few known differences, such as PDF fonts, are listed in <a href="https://github.com/Cherry/shoalbase/blob/main/docs/PARITY.md">PARITY.md</a>.</p>
+			</div>
+		</section>
+
+		<section id="features" class="features" aria-labelledby="features-title">
+			<div class="wrap">
+				<h2 id="features-title" class="section-label">What your users can do</h2>
+				<p class="section-intro">The same pages, from browse to grant.</p>
+				<div class="reel">
+					<figure class="reel-item">
+						<div class="window">
+							<video src="/videos/sql-query.mp4" poster="/videos/sql-query.jpg" controls muted loop playsinline preload="none"></video>
+						</div>
+						<figcaption><span class="caption-label">Run SQL</span>Highlighting, autocomplete and the query console.</figcaption>
+					</figure>
+					<figure class="reel-item">
+						<div class="window">
+							<video src="/videos/table-structure.mp4" poster="/videos/table-structure.jpg" controls muted loop playsinline preload="none"></video>
+						</div>
+						<figcaption><span class="caption-label">Change structure</span>Columns, indexes and foreign keys through the usual forms.</figcaption>
+					</figure>
+					<figure class="reel-item">
+						<div class="window">
+							<video src="/videos/export.mp4" poster="/videos/export.jpg" controls muted loop playsinline preload="none"></video>
+						</div>
+						<figcaption><span class="caption-label">Import and export</span>SQL, CSV, JSON, OpenDocument, PDF and more, with the same options.</figcaption>
+					</figure>
+					<figure class="reel-item">
+						<div class="window">
+							<video src="/videos/user-accounts.mp4" poster="/videos/user-accounts.jpg" controls muted loop playsinline preload="none"></video>
+						</div>
+						<figcaption><span class="caption-label">Manage accounts</span>Users and privileges, down to single columns.</figcaption>
+					</figure>
+				</div>
+			</div>
+		</section>
+
+		<section class="how" aria-labelledby="how-title">
+			<div class="wrap how-grid">
+				<h2 id="how-title" class="section-label">How it works</h2>
+				<div class="how-item">
+					<h3>One Worker, one connection</h3>
+					<p>Users sign in with their own MySQL or MariaDB account. For each request the Worker opens a TCP connection with <code>cloudflare:sockets</code>, runs the page's queries on it and closes it when the response is sent.</p>
+				</div>
+				<div class="how-item">
+					<h3>Sessions in Durable Objects</h3>
+					<p>Each session lives in its own Durable Object, the way PHP keeps a session file. The password cookie is encrypted with a key only that session holds, so logging out ends it everywhere. Sessions expire after 24 minutes idle, and their storage is deleted.</p>
+				</div>
+				<div class="how-item">
+					<h3>TLS to self-signed servers</h3>
+					<p>MySQL servers are trusted by pinning their certificate's key. MariaDB servers prove their certificate after login, so a regenerated certificate keeps working and an impostor does not.</p>
+				</div>
+				<div class="how-item">
+					<h3>phpMyAdmin's own front end</h3>
+					<p>Pages render phpMyAdmin's Twig templates, themes and JavaScript, unmodified. The PHP behind them is translated to TypeScript, class by class.</p>
+				</div>
+			</div>
+		</section>
+
+		<section id="get-started" class="start" aria-labelledby="start-title">
+			<div class="wrap start-grid">
+				<div class="start-copy">
+					<h2 id="start-title">Take a sounding.</h2>
+					<p>Deploy from GitHub, or set it up from a terminal. Both ask for a cookie key and the servers your users may sign in to. MySQL keys are pinned and MariaDB proves its certificate, so self-signed TLS just works.</p>
+					<ol class="steps">
+						<li>
+							<span class="step-title">From GitHub</span>
+							<a class="deploy" href="https://deploy.workers.cloudflare.com/?url=https://github.com/Cherry/shoalbase">
+								<img src="https://deploy.workers.cloudflare.com/button" alt="Deploy to Cloudflare" width="186" height="32">
+							</a>
+						</li>
+						<li>
+							<span class="step-title">From a terminal</span>
+							<div class="command" data-copy-group>
+								<code id="start-command">npx shoalbase my-shoalbase</code>
+								<button type="button" class="copy" data-copy-target="start-command">Copy</button>
+							</div>
+						</li>
+					</ol>
+				</div>
+				<div class="config">
+					<p class="config-label"><code>PMA_SERVERS</code></p>
+					<pre><code>[
+  { "host": "mysql.example.com" },
+  { "host": "secure.example.com", "ssl": true,
+    "pin": "Gy789bwh929fkWB/9h3N1oUYTB78tiH3waOuO1sGVQw=" },
+  { "host": "mariadb.example.com", "port": 3307, "ssl": true }
+]</code></pre>
+					<p class="config-note">Plain TCP, MySQL over TLS with a pinned key, and MariaDB over TLS. The <a href="https://github.com/Cherry/shoalbase#configuration">README</a> covers every option.</p>
+				</div>
+			</div>
+		</section>
+	</main>
+
+	<footer class="site-footer">
+		<div class="wrap footer-grid">
+			<p>Shoalbase is open source under the <a href="https://github.com/Cherry/shoalbase/blob/main/LICENSE">GPL-3.0</a>. It translates and includes phpMyAdmin, which is a trademark of the phpMyAdmin project. Shoalbase is not affiliated with or endorsed by phpMyAdmin.</p>
+			<p>This project was primarily written by AI coding agents, directed and reviewed by a human operator. Read the code before trusting it in production.</p>
+			<nav class="footer-nav" aria-label="Footer links">
+				<a href="https://github.com/Cherry/shoalbase">GitHub</a>
+				<a href="https://www.npmjs.com/package/shoalbase">npm</a>
+				<a href="https://github.com/Cherry/shoalbase/blob/main/SECURITY.md">Security</a>
+			</nav>
+		</div>
+	</footer>
+</body>
+
+</html>

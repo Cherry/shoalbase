@@ -1,0 +1,102 @@
+{
+	"name": "shoalbase",
+	"version": "0.0.0-semantically-released",
+	"description": "phpMyAdmin, ported to Cloudflare Workers with page-for-page parity.",
+	"keywords": [
+		"phpmyadmin",
+		"cloudflare-workers",
+		"mysql",
+		"mariadb",
+		"database-admin"
+	],
+	"homepage": "https://github.com/Cherry/shoalbase#readme",
+	"bugs": "https://github.com/Cherry/shoalbase/issues",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Cherry/shoalbase.git"
+	},
+	"license": "GPL-3.0-or-later",
+	"author": "James Ross <james@jross.me>",
+	"type": "module",
+	"bin": {
+		"shoalbase": "./dist-bin/shoalbase.mjs"
+	},
+	"files": [
+		"dist-bin/shoalbase.mjs"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"astro": "astro",
+		"templates": "node scripts/vite-run.ts scripts/precompile-templates.ts",
+		"prebuild": "npm run templates",
+		"build": "astro build",
+		"predev": "npm run templates",
+		"dev": "astro dev",
+		"prelint": "npm run templates",
+		"lint": "eslint --flag unstable_native_nodejs_ts_config . && astro check",
+		"precheck": "npm run templates",
+		"check": "astro check",
+		"lint:fix": "eslint --flag unstable_native_nodejs_ts_config . --fix",
+		"preview": "astro preview",
+		"pretest": "npm run templates",
+		"test": "vitest run",
+		"pretest:coverage": "npm run templates",
+		"test:coverage": "vitest run --coverage",
+		"test:workers": "vitest run -c vitest.workers.config.ts",
+		"deploy": "wrangler deploy",
+		"test:live": "node tests/live-smoke.ts",
+		"parity:crawl": "node scripts/pma-crawl.ts",
+		"db:up": "docker compose -f docker/compose.yaml up -d --wait",
+		"db:down": "docker compose -f docker/compose.yaml down -v",
+		"dev-vars": "node scripts/dev-vars.ts",
+		"test:visual": "playwright test -c tests/visual/playwright.config.ts",
+		"build:bin": "tsdown bin/shoalbase.ts --out-dir dist-bin",
+		"prepack": "npm run build:bin"
+	},
+	"engines": {
+		"node": ">= 24"
+	},
+	"devDependencies": {
+		"@astrojs/check": "0.9.12",
+		"@astrojs/cloudflare": "14.4.3",
+		"@cloudflare/vitest-plugin": "1.4.11",
+		"@nodecraft/eslint-config": "53.0.0",
+		"@playwright/test": "1.64.1",
+		"@semantic-release/commit-analyzer": "13.0.1",
+		"@semantic-release/release-notes-generator": "14.1.1",
+		"@stylistic/eslint-plugin": "5.10.0",
+		"@types/node": "24.19.2",
+		"@vitest/coverage-v8": "5.0.5",
+		"astro": "7.4.4",
+		"eslint": "10.14.0",
+		"eslint-plugin-astro": "3.2.1",
+		"eslint-plugin-import-newlines": "2.0.0",
+		"eslint-plugin-import-x": "4.17.1",
+		"eslint-plugin-n": "18.5.0",
+		"eslint-plugin-regexp": "3.3.3",
+		"eslint-plugin-unicorn": "78.0.0",
+		"jsdom": "30.1.3",
+		"mysql2": "3.24.6",
+		"pixelmatch": "8.0.0",
+		"semantic-release": "25.0.9",
+		"sharp": "0.35.5",
+		"tsdown": "0.23.4",
+		"twing": "7.3.1",
+		"typescript": "6.0.3",
+		"typescript-eslint": "8.72.1",
+		"vitest": "5.0.5",
+		"wrangler": "4.156.0"
+	},
+	"cloudflare": {
+		"bindings": {
+			"PMA_COOKIE_SECRET": {
+				"description": "At least 32 random characters. It encrypts the username cookie, like phpMyAdmin's `blowfish_secret`; generate one with `openssl rand -base64 36`."
+			},
+			"PMA_SERVERS": {
+				"description": "A JSON array of the MySQL and MariaDB servers users can sign in to, such as `[{\"host\":\"mysql.example.com\"}]`. See the [README](https://github.com/Cherry/shoalbase#configuration) for TLS servers."
+			}
+		}
+	}
+}

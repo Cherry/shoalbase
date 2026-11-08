@@ -1,0 +1,10 @@
+{
+	"branches": [
+		"main"
+	],
+	"plugins": [
+		"./scripts/release-commits.ts",
+		"@semantic-release/npm",
+		"@semantic-release/github"
+	]
+}

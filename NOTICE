@@ -1,0 +1,16 @@
+Shoalbase
+Copyright (C) 2026 James Ross
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See LICENSE for the full text.
+
+This project is a TypeScript port of phpMyAdmin 5.2.3. It includes, or translates, the following third-party work:
+
+- phpMyAdmin 5.2.3, by the phpMyAdmin contributors, GPL-2.0-or-later (https://www.phpmyadmin.net/). Its Twig templates, locales and PHP sources (kept for reference) are in vendor/phpmyadmin-5.2.3/, and its themes, JavaScript and documentation are in public/. These files are unmodified. Its license is in vendor/phpmyadmin-5.2.3/LICENSE. The TypeScript code translates phpMyAdmin's PHP classes.
+- phpmyadmin/sql-parser and phpmyadmin/shapefile, by the phpMyAdmin contributors, GPL-2.0-or-later. src/sql-parser/ translates sql-parser, and src/lib/pma/export-import/shapefile.ts translates shapefile.
+- phpmyadmin/twig-i18n-extension, Copyright (c) 2010-2019 Fabien Potencier and (c) 2019-2021 phpMyAdmin contributors, MIT. src/lib/twig/i18n.ts translates its {% trans %} handling.
+- TCPDF 6.10, by Nicola Asuni, LGPL-3.0-or-later (https://tcpdf.org/). src/lib/pma/pdf/tcpdf.ts translates the parts of TCPDF that phpMyAdmin uses. Because of this, the project as a whole is licensed GPL-3.0-or-later.
+- DejaVu Sans font metrics in src/lib/pma/pdf/dejavu-widths.json, taken from TCPDF's dejavusans font files. The DejaVu fonts are under the Bitstream Vera Fonts license, and DejaVu's changes are in the public domain (https://dejavu-fonts.github.io/License.html). No font outlines are included.
+- zlib 1.3, Copyright (C) 1995-2023 Jean-loup Gailly and Mark Adler, zlib license. src/lib/pma/export-import/zlib-deflate.ts is an altered translation of deflate.c and trees.c. The license is in that file's header.
+- The JavaScript libraries in public/js/vendor/ (jQuery and its plugins, Bootstrap, CodeMirror, jqPlot, OpenLayers, js-cookie, sprintf.js, TraceKit, u2f-api-polyfill, zxcvbn-ts), as shipped with phpMyAdmin 5.2.3, keep their own licenses, stated in their file headers.
+
+phpMyAdmin is a trademark of the phpMyAdmin project. This project is not affiliated with or endorsed by the phpMyAdmin project.
