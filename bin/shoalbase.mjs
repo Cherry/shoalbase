@@ -2,12 +2,13 @@
 // Sets up a Shoalbase checkout: clones the release matching this package, asks for the servers, writes .dev.vars, and can deploy it.
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { createInterface } from 'node:readline/promises';
 import { pathToFileURL } from 'node:url';
 
+import packageJson from '../package.json' with { type: 'json' };
 import { releaseRef, serverEntry } from './installer.mjs';
 
 const REPOSITORY = 'https://github.com/Cherry/shoalbase.git';
@@ -21,7 +22,7 @@ Options:
   -h, --help     Show this help
   -v, --version  Show the version`;
 
-const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const { version } = packageJson;
 
 function run(command, args, cwd) {
 	// npm is a .cmd shim on Windows, which Node only starts through a shell; none of its arguments here contain spaces.

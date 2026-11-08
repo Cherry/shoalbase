@@ -61,13 +61,20 @@ describe('generateFieldSpec', () => {
 
 	it('writes UUID defaults and ignores unknown default types', () => {
 		expect(generateFieldSpec({ name: 'u', type: 'UUID', defaultType: 'uuid()' }, mariadb)).toBe('`u` UUID DEFAULT uuid()');
+		expect(generateFieldSpec({ name: 'u', type: 'UUID', defaultType: 'UUID' }, mariadb)).toBe('`u` UUID DEFAULT uuid()');
 		expect(generateFieldSpec({ name: 'u', type: 'INT', defaultType: 'OTHER' }, mysql8)).toBe('`u` INT');
+	});
+
+	it('writes a non-timestamp attribute without repeating the length', () => {
+		expect(generateFieldSpec({ name: 'a', type: 'INT', length: '11', attribute: 'UNSIGNED', defaultType: 'NONE' }, mysql57)).toBe('`a` INT(11) UNSIGNED');
 	});
 
 	it('builds virtual columns, which MariaDB writes without nullability or extra', () => {
 		const spec = { name: 'v', type: 'VARCHAR', length: '5', collation: 'utf8mb4_bin', nullable: 'YES', virtuality: 'VIRTUAL', expression: 'concat(a)', extra: 'AUTO_INCREMENT UNIQUE' };
 		expect(generateFieldSpec(spec, mysql8)).toBe('`v` VARCHAR(5) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin AS (concat(a)) VIRTUAL NULL UNIQUE');
 		expect(generateFieldSpec(spec, mariadb)).toBe('`v` VARCHAR(5) CHARACTER SET utf8mb4 AS (concat(a)) VIRTUAL');
+		// Upstream's $expression defaults to '', leaving an empty generation expression.
+		expect(generateFieldSpec({ name: 'v', type: 'INT', virtuality: 'STORED' }, mariadb)).toBe('`v` INT AS () STORED');
 	});
 
 	it('moves the column first and skips a NULL collation', () => {

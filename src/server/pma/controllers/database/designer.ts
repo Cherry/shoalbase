@@ -134,7 +134,7 @@ async function getDatabaseTables(context: PmaContext, db: string, data: TablesDa
 /** Designer::getHtmlForSchemaExport(). */
 async function schemaExportDialog(context: PmaContext, page: string): Promise<string> {
 	const { config, request } = context;
-	const options: OptionRequest = { get: request.query, request: request.params, timeoutPassed: false, section: config.Schema as unknown as Record<string, unknown> };
+	const options: OptionRequest = { get: request.query, request: request.params, timeoutPassed: false, section: config.Schema };
 	const plugins = getSchemaPlugins(config.PDFPageSizes);
 	const exportType = request.query.export_type;
 	const defaultFormat = typeof exportType === 'string' ? exportType : getDefault(options, 'format');

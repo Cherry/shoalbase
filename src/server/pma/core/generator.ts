@@ -11,7 +11,7 @@ export { getImage, getDocumentationLink, getMySQLDocuUrl, showDocumentationLink,
 /** The $cfg and server version the Generator helpers read. */
 export function generatorState(context: PmaContext): GeneratorState {
 	const version = context.dbi.isConnected() ? context.dbi.getVersion() : 0;
-	return toGeneratorState(createTemplateState({ config: context.config as unknown as Record<string, unknown>, mysqlVersion: version }));
+	return toGeneratorState(createTemplateState({ config: context.config, mysqlVersion: version }));
 }
 
 /** Generator::getIcon(). */

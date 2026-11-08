@@ -1,5 +1,5 @@
 // The request-independent parts of Table\ColumnsDefinition::displayForm(): column defaults, regenerated rows and form parameters.
-import { convertBitDefaultValue, extractColumnSpec } from './column-spec.ts';
+import { type ColumnSpec, convertBitDefaultValue, extractColumnSpec } from './column-spec.ts';
 import { type PhpArray, type PhpValue, phpGet } from '../table-data/php-params.ts';
 
 export type ColumnMeta = Record<string, unknown>;
@@ -118,7 +118,7 @@ export interface ContentCell {
 	typeUpper: string;
 	length: string;
 	defaultValue: string;
-	extractedColumnspec: Record<string, unknown>;
+	extractedColumnspec: Partial<ColumnSpec>;
 	/** The field_*_orig[n] hidden fields of an edited column. */
 	backupParams: Record<string, unknown>;
 }
@@ -130,10 +130,10 @@ export function contentCell(input: ContentCellInput): ContentCell {
 	const meta = { ...input.meta };
 	let length = input.length;
 	let type = '';
-	let extracted: Record<string, unknown> = {};
+	let extracted: Partial<ColumnSpec> = {};
 	if (meta.Type !== undefined && meta.Type !== null) {
 		const spec = extractColumnSpec(String(meta.Type), input.limitChars);
-		extracted = spec as unknown as Record<string, unknown>;
+		extracted = spec;
 		if (spec.type === 'bit') {
 			meta.Default = convertBitDefaultValue(meta.Default as string | null);
 		}

@@ -165,7 +165,7 @@ for (const screen of SCREENS) {
 		const [oracleTarget, oursTarget] = TARGETS;
 		const oracle = await capture(browser, oracleTarget, screen);
 		const ours = await capture(browser, oursTarget, screen);
-		const result = compareScreens(screen.name, oracle.image, ours.image);
+		const result = await compareScreens(screen.name, oracle.image, ours.image);
 		const record = {
 			...result,
 			oracleUrl: oracle.url,

@@ -51,12 +51,7 @@ export function pluginFromRow(row: Row): PluginArray {
 
 /** PluginsController: plugins grouped by type (ksort()ed) and each type's CSS-safe name. */
 export function groupPlugins(plugins: PluginArray[]): { plugins: Map<string, PluginArray[]>; cleanTypes: Map<string, string>; } {
-	const grouped = new Map<string, PluginArray[]>();
-	for (const plugin of plugins) {
-		const list = grouped.get(plugin.type) ?? [];
-		list.push(plugin);
-		grouped.set(plugin.type, list);
-	}
+	const grouped = Map.groupBy(plugins, plugin => plugin.type);
 	const sorted = new Map([...grouped].toSorted(([left], [right]) => phpCompareStrings(left, right)));
 	const cleanTypes = new Map(sorted.keys().map(type => [type, type.toLowerCase().replaceAll(/[^a-z]/g, '')]));
 	return { plugins: sorted, cleanTypes };

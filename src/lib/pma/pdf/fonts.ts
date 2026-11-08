@@ -8,9 +8,12 @@ interface FontMetrics {
 	ranges: [number, (number | null)[]][];
 }
 
+// eslint-disable-next-line antislop/no-chained-type-assertions -- JSON imports infer arrays rather than the [start, widths] tuples the generated file holds.
+const faces = data as unknown as { regular: FontMetrics; bold: FontMetrics; };
+
 const METRICS: Record<FontStyle, FontMetrics> = {
-	'': data.regular as unknown as FontMetrics,
-	'B': data.bold as unknown as FontMetrics,
+	'': faces.regular,
+	'B': faces.bold,
 };
 
 /** Both faces share these descriptor values (Ascent 928, Descent -236). */

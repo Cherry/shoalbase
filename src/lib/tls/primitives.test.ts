@@ -183,12 +183,16 @@ describe('handshake signatures', () => {
 describe('key agreement', () => {
 	it('agrees on ECDHE secrets with an independent implementation', async () => {
 		const toRaw = async (key: KeyObject, group: EcdhGroup): Promise<Bytes> => {
-			if (group === 'X25519') { return new Uint8Array(Buffer.from(key.export({ format: 'jwk' }).x as string, 'base64url')); }
+			if (group === 'X25519') {
+				return new Uint8Array(Buffer.from(key.export({ format: 'jwk' }).x as string, 'base64url'));
+			}
 			const imported = await crypto.subtle.importKey('spki', key.export({ type: 'spki', format: 'der' }), { name: 'ECDH', namedCurve: group }, true, []);
 			return new Uint8Array(await crypto.subtle.exportKey('raw', imported));
 		};
 		const fromRaw = async (raw: Uint8Array<ArrayBuffer>, group: EcdhGroup): Promise<KeyObject> => {
-			if (group === 'X25519') { return createPublicKey({ key: { kty: 'OKP', crv: 'X25519', x: Buffer.from(raw).toString('base64url') }, format: 'jwk' }); }
+			if (group === 'X25519') {
+				return createPublicKey({ key: { kty: 'OKP', crv: 'X25519', x: Buffer.from(raw).toString('base64url') }, format: 'jwk' });
+			}
 			const imported = await crypto.subtle.importKey('raw', raw, { name: 'ECDH', namedCurve: group }, true, []);
 			return createPublicKey({ key: Buffer.from(await crypto.subtle.exportKey('spki', imported)), format: 'der', type: 'spki' });
 		};

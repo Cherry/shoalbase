@@ -17,7 +17,9 @@ const displayError = (message: string): string => `<div class="alert alert-dange
 export const renderLoginPage = async (astro: APIContext, form: LoginFormState, request: PmaRequest): Promise<Response> => {
 	const hasLangCookie = astro.cookies.has(LANG_COOKIE);
 	const body = await renderUpstreamLoginPage({
-		servers: form.servers.map((server, index) => { return { index: index + 1, host: server.host }; }),
+		servers: form.servers.map((server, index) => {
+			return { index: index + 1, host: server.host };
+		}),
 		selectedServer: form.selectedServer,
 		defaultUser: form.defaultUser,
 		error: form.alertMessage === '' ? undefined : form.alertMessage,

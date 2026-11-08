@@ -1,12 +1,12 @@
+// The request side of sessions in workerd: cookies in, the PMA_SESSIONS object called over RPC, cookies out, as the middleware runs it.
+import { listDurableObjectIds, runInDurableObject } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
-import {
-	afterEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from 'vitest';
+import { describe, expect, it } from 'vitest';
 
+import type { RequestParams } from '~/lib/pma-request';
+
+import { sessionObjectName } from '~/lib/auth';
+import { PmaSession } from '~/lib/pma/session';
 import {
 	PhpCookies,
 	beginSession,
@@ -14,10 +14,8 @@ import {
 	logOut,
 	saveSession,
 	storePasswordCookie,
-} from './session-runtime.ts';
-import { PmaSession } from '../lib/pma/session.ts';
+} from '~/server/session-runtime';
 
-import type { RequestParams } from '../lib/pma-request.ts';
 
 /** A browser's cookie jar: it sends its cookies with each request and keeps what the response sets. */
 class Browser {
@@ -57,19 +55,26 @@ class Browser {
 		await createLoginSession(cookies, server, 'customer', 'customerpw', {});
 		this.keep(cookies);
 	}
+
+	/** What the session object behind this browser's phpMyAdmin cookie holds. */
+	async stored(): Promise<Record<string, unknown>> {
+		const stub = env.PMA_SESSIONS.getByName(await sessionObjectName(this.jar.get('phpMyAdmin') ?? ''));
+		return runInDurableObject(stub, (_instance, state) => Object.fromEntries(state.storage.kv.list()));
+	}
 }
 
-describe('session runtime', () => {
-	afterEach(() => {
-		vi.useRealTimers();
-		vi.restoreAllMocks();
-	});
+const objectCount = async (): Promise<number> => {
+	const ids = await listDurableObjectIds(env.PMA_SESSIONS);
+	return ids.length;
+};
 
+describe('session runtime', () => {
 	it('signs a browser in with its session, username and password cookies, without the password in any cookie', async () => {
 		const browser = new Browser();
 		await browser.login();
 		expect(new Set(browser.jar.keys())).toEqual(new Set(['phpMyAdmin', 'pmaAuth-1', 'pmaUser-1']));
 		expect(browser.jar.values().some(value => value.includes('customer'))).toBe(false);
+		expect(JSON.stringify(await browser.stored())).not.toContain('customerpw');
 
 		const state = await browser.begin();
 		expect(state).toMatchObject({ status: 'signed-in', server: 1, user: 'customer', password: 'customerpw', id: browser.jar.get('phpMyAdmin') });
@@ -79,14 +84,42 @@ describe('session runtime', () => {
 		const browser = new Browser();
 		await browser.login();
 		const first = await browser.begin();
-		if (first.status !== 'signed-in') { throw new Error('not signed in'); }
+		if (first.status !== 'signed-in') {
+			throw new Error('not signed in');
+		}
 		first.session.tmpval.pos = 30;
 		await saveSession(first.id, first.session);
 		const second = await browser.begin();
 		expect(second.status === 'signed-in' && second.session.data.tmpval).toEqual({ pos: 30 });
 	});
 
-	it('makes a copied cookie pair useless after logout', async () => {
+	it('gives a signed-out request a fresh phpMyAdmin cookie without creating a session object', async () => {
+		const before = await objectCount();
+		const browser = new Browser();
+		const state = await browser.begin();
+		expect(state.status).toBe('signed-out');
+		expect(browser.jar.get('phpMyAdmin')).toMatch(/^[\da-f]{32}$/);
+		expect(browser.jar.get('phpMyAdmin')).toBe(state.id);
+		expect(await objectCount()).toBe(before);
+
+		// Logging in is what creates one.
+		await browser.login();
+		expect(await objectCount()).toBe(before + 1);
+	});
+
+	it('never looks up a session for a cookie that is not a session id', async () => {
+		const before = await objectCount();
+		const browser = new Browser();
+		browser.jar.set('phpMyAdmin', '../../etc/passwd');
+		browser.jar.set('pmaUser-1', 'x');
+		browser.jar.set('pmaAuth-1', 'x');
+		const state = await browser.begin();
+		expect(state.status).toBe('signed-out');
+		expect(browser.jar.get('phpMyAdmin')).toBe(state.id);
+		expect(await objectCount()).toBe(before);
+	});
+
+	it('makes a copied cookie pair useless after logout, and leaves the session object empty', async () => {
 		const browser = new Browser();
 		await browser.login();
 		const copied = new Browser();
@@ -98,6 +131,7 @@ describe('session runtime', () => {
 		browser.keep(cookies);
 		expect(browser.jar.has('pmaAuth-1')).toBe(false);
 		expect(browser.jar.has('pmaUser-1')).toBe(true);
+		expect(await browser.stored()).toEqual({});
 
 		const replayed = await copied.begin();
 		expect(replayed.status).toBe('signed-out');
@@ -114,6 +148,18 @@ describe('session runtime', () => {
 		expect(expired).toEqual({ status: 'signed-out', id, expiredValidity: 1440 });
 		expect(browser.jar.has('pmaAuth-1')).toBe(false);
 		expect(await browser.status()).toBe('signed-out');
+	});
+
+	it('shows the inactivity notice on the page an expired AJAX request reloads', async () => {
+		const browser = new Browser();
+		await browser.login();
+		const id = browser.jar.get('phpMyAdmin');
+		await browser.begin({ guid: 'default', access_time: '1441' });
+		expect(await browser.begin({ ajax_request: 'true' })).toEqual({ status: 'signed-out', id, expiredValidity: 1440 });
+		expect(browser.jar.has('pmaAuth-1')).toBe(false);
+		// The reload has no password cookie any more, yet the session object still remembers why it signed out.
+		expect(await browser.begin()).toEqual({ status: 'signed-out', id, expiredValidity: 1440 });
+		expect(await browser.stored()).toEqual({});
 	});
 
 	it('discards the session when its password cookie was tampered with', async () => {
@@ -145,17 +191,6 @@ describe('session runtime', () => {
 		expect(await browser.status()).toBe('signed-out');
 	});
 
-	it('never looks up a session for a cookie that is not a session id', async () => {
-		const getByName = vi.spyOn(env.PMA_SESSIONS, 'getByName');
-		const browser = new Browser();
-		browser.jar.set('phpMyAdmin', '../../etc/passwd');
-		browser.jar.set('pmaUser-1', 'x');
-		const state = await browser.begin();
-		expect(state.status).toBe('signed-out');
-		expect(getByName).not.toHaveBeenCalled();
-		expect(browser.jar.get('phpMyAdmin')).toBe(state.id);
-	});
-
 	it('treats a POSTed login as a new sign-in even with a live session', async () => {
 		const browser = new Browser();
 		await browser.login();
@@ -174,7 +209,9 @@ describe('session runtime', () => {
 		const browser = new Browser();
 		await browser.login();
 		const state = await browser.begin();
-		if (state.status !== 'signed-in') { throw new Error('not signed in'); }
+		if (state.status !== 'signed-in') {
+			throw new Error('not signed in');
+		}
 		const { cookies } = browser.request();
 		await storePasswordCookie(cookies, 1, state.session, 'newpw');
 		browser.keep(cookies);

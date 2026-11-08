@@ -367,7 +367,9 @@ export class Sql {
 	}
 
 	private async profilingChart(rows: DbiRow[]): Promise<string> {
-		const stats = detailedProfilingStats(rows.map((row) => { return { Status: row.Status ?? null, Duration: row.Duration ?? null }; }));
+		const stats = detailedProfilingStats(rows.map((row) => {
+			return { Status: row.Status ?? null, Duration: row.Duration ?? null };
+		}));
 		return renderTemplate('sql/profiling_chart', {
 			profiling: {
 				total_time: stats.total_time,

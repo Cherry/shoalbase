@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { type ExportPluginParam, getExportList, getExportPlugin } from './export-plugins.ts';
 import { type PluginInfo, getOptions } from './properties.ts';
 
-const param = (overrides: Partial<ExportPluginParam> = {}): ExportPluginParam => { return { exportType: 'server', singleTable: false, rawQuery: false, isView: false, db: '', ...overrides }; };
+const param = (overrides: Partial<ExportPluginParam> = {}): ExportPluginParam => {
+	return { exportType: 'server', singleTable: false, rawQuery: false, isView: false, db: '', ...overrides };
+};
 
 describe('getExportList', () => {
 	it('sorts by display name and leaves XML out of a server export', () => {

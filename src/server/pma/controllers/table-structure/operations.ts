@@ -292,7 +292,9 @@ export async function operationsController(context: PmaContext): Promise<Respons
 	const databases = await dbi.getDatabaseList();
 	let databaseList: { name: string; is_selected: boolean; }[] = [];
 	if (databases.length <= config.MaxDbList) {
-		databaseList = databases.filter(name => !isSystemSchema(name)).map((name) => { return { name, is_selected: name === context.db }; });
+		databaseList = databases.filter(name => !isSystemSchema(name)).map((name) => {
+			return { name, is_selected: name === context.db };
+		});
 	}
 	let partitions: (string | null)[] = [];
 	let partitionsChoices: Record<string, string> = {};

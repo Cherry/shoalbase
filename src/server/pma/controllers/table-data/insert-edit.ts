@@ -68,7 +68,7 @@ export function editConfig(context: PmaContext): EditConfig {
 		CharTextareaCols: config.CharTextareaCols,
 		LongtextDoubleTextarea: config.LongtextDoubleTextarea,
 		LimitChars: config.LimitChars,
-		DefaultFunctions: config.DefaultFunctions as unknown as Record<string, string>,
+		DefaultFunctions: config.DefaultFunctions,
 	};
 }
 
@@ -76,6 +76,7 @@ export function editConfig(context: PmaContext): EditConfig {
 export async function getTableColumns(context: PmaContext, db: string, table: string): Promise<TableColumn[]> {
 	await context.dbi.selectDb(db);
 	const columns = await context.dbi.getColumns(db, table, true);
+	// eslint-disable-next-line antislop/no-chained-type-assertions -- SHOW FULL COLUMNS rows always carry these fields, but the DBI returns them as untyped rows.
 	return columns.values().toArray() as unknown as TableColumn[];
 }
 
@@ -139,10 +140,10 @@ export async function determineInsertOrEdit(context: PmaContext, post: PhpArray,
 		afterInsert = 'edit_next';
 	}
 	if (post.ShowFunctionFields !== undefined) {
-		(config as unknown as Record<string, unknown>).ShowFunctionFields = post.ShowFunctionFields;
+		(config as Record<string, unknown>).ShowFunctionFields = post.ShowFunctionFields;
 	}
 	if (post.ShowFieldTypesInDataEditView !== undefined) {
-		(config as unknown as Record<string, unknown>).ShowFieldTypesInDataEditView = post.ShowFieldTypesInDataEditView;
+		(config as Record<string, unknown>).ShowFieldTypesInDataEditView = post.ShowFieldTypesInDataEditView;
 	}
 	if (post.after_insert !== undefined) {
 		afterInsert = phpScalar(post.after_insert) ?? null;
@@ -332,7 +333,9 @@ async function getHtmlForInsertEditFormColumn(context: PmaContext, input: FormRo
 	}
 
 	if (column.pma_type === 'enum') {
-		column.values ??= extractedColumnspec.enum_set_values.map((value) => { return { plain: value, html: htmlspecialchars(value) }; });
+		column.values ??= extractedColumnspec.enum_set_values.map((value) => {
+			return { plain: value, html: htmlspecialchars(value) };
+		});
 		const data = special.data ?? '';
 		for (const enumValue of column.values) {
 			const isDefault = data === '' && (!input.postedWhereClause || column.Null !== 'YES') && column.Default !== null && looseEquals(enumValue.plain, column.Default);
@@ -343,7 +346,9 @@ async function getHtmlForInsertEditFormColumn(context: PmaContext, input: FormRo
 		}
 	} else if (column.pma_type === 'set') {
 		if (column.values === undefined) {
-			column.values = extractedColumnspec.enum_set_values.map((value) => { return { plain: value, html: htmlspecialchars(value) }; });
+			column.values = extractedColumnspec.enum_set_values.map((value) => {
+				return { plain: value, html: htmlspecialchars(value) };
+			});
 			column.select_size = Math.min(4, column.values.length);
 		}
 		setValues = column.values;

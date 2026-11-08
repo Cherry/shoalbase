@@ -35,5 +35,7 @@ export function addScriptFile(list: ScriptEntry[], file: ScriptFile): void {
 export function getScriptFiles(list: ScriptEntry[]): { name: string; fire: 0 | 1; }[] {
 	return list
 		.filter(entry => !entry.filename.includes('?'))
-		.map((entry) => { return { name: entry.filename, fire: entry.has_onload }; });
+		.map((entry) => {
+			return { name: entry.filename, fire: entry.has_onload };
+		});
 }

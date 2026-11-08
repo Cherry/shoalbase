@@ -273,7 +273,7 @@ for (const check of CHECKS) {
 		const ours = await runSide(browser, oursTarget, check);
 		const screen = `interaction-${check.name}`;
 		mkdirSync(path.join(REPORT_DIR, screen), { recursive: true });
-		const diff = compareScreens(screen, oracle.image, ours.image);
+		const diff = await compareScreens(screen, oracle.image, ours.image);
 		const record = {
 			check: screen,
 			oracle: oracle.outcome,

@@ -54,6 +54,15 @@ describe('zipContents', () => {
 		expect(await dataOf(zip)).toBe('SELECT 1;');
 	});
 
+	it('finds the end of central directory record before an archive comment', async () => {
+		const zip = createZip([['dump.sql', encoder.encode('SELECT 1;')]], date);
+		const comment = encoder.encode('exported by hand');
+		const commented = new Uint8Array([...zip, ...comment]);
+		new DataView(commented.buffer).setUint16(zip.length - 2, comment.length, true);
+		expect(zipFileCount(commented)).toBe(1);
+		expect(await dataOf(commented)).toBe('SELECT 1;');
+	});
+
 	it('returns content.xml of an OpenDocument spreadsheet and the first match of a pattern', async () => {
 		const ods = createZip([['mimetype', encoder.encode('application/vnd.oasis.opendocument.spreadsheet')], ['content.xml', encoder.encode('<x/>')]], date);
 		expect(await dataOf(ods)).toBe('<x/>');

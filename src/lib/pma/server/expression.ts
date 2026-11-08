@@ -83,10 +83,11 @@ function syntaxError(message: string, cursor: number, expression: string, subjec
 		let minScore = Infinity;
 		for (const proposal of proposals) {
 			const distance = levenshtein(subject, proposal);
-			if (distance < minScore) {
-				guess = proposal;
-				minScore = distance;
+			if (distance >= minScore) {
+				continue;
 			}
+			guess = proposal;
+			minScore = distance;
 		}
 		if (guess !== undefined && minScore < 3) {
 			text += ` Did you mean "${guess}"?`;

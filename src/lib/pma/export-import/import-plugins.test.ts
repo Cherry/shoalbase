@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { getImportList, getImportPlugin } from './import-plugins.ts';
 import { type OptionsGroup, OptionsItem } from './properties.ts';
 
-const param = (importType: string) => { return { importType, columnsHint: '<hint>' }; };
+const param = (importType: string) => {
+	return { importType, columnsHint: '<hint>' };
+};
 
 // The names of a plugin's general options, in order.
 function optionNames(importType: string, format: string): (string | null)[] {

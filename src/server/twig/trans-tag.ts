@@ -125,7 +125,9 @@ export function createTransTagHandler(): TwingTagHandler {
 				column,
 			);
 			const args = createArrayNode(
-				[singular.message, pluralMessage, count ?? nullNode, context ?? nullNode, variableHash].map((value) => { return { value }; }),
+				[singular.message, pluralMessage, count ?? nullNode, context ?? nullNode, variableHash].map((value) => {
+					return { value };
+				}),
 				line,
 				column,
 			);

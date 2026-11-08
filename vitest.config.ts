@@ -13,7 +13,7 @@ export default defineConfig({
 	},
 	test: {
 		environment: 'jsdom',
-		exclude: ['**/node_modules/**', '**/dist/**', '**/.git/**', '**/.reference/**', '**/.research-phpmyadmin/**'],
+		exclude: ['**/node_modules/**', '**/dist/**', 'tests/workers/**', '**/.git/**', '**/.reference/**', '**/.research-phpmyadmin/**'],
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'html'],

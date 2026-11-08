@@ -284,6 +284,8 @@ export function getExportList(param: ExportPluginParam): PluginInfo[] {
 	return Object.keys(EXPORT_PLUGINS)
 		// ExportXml cannot export a whole server.
 		.filter(name => name !== 'xml' || param.db !== '')
-		.map((name) => { return { name, properties: EXPORT_PLUGINS[name](param) }; })
+		.map((name) => {
+			return { name, properties: EXPORT_PLUGINS[name](param) };
+		})
 		.toSorted((left, right) => strcasecmp(left.properties.text, right.properties.text));
 }

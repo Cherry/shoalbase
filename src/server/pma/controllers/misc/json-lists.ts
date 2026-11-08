@@ -56,7 +56,7 @@ export async function getConfigController(context: PmaContext): Promise<Response
 	if (typeof key !== 'string') {
 		return missingParameters(context);
 	}
-	let value: unknown = (context.config as unknown as Record<string, unknown>)[key] ?? null;
+	let value: unknown = (context.config as Record<string, unknown>)[key] ?? null;
 	// Config::loadUserPreferences() records where preferences live; without pmadb that is the session.
 	if (key === 'user_preferences') {
 		value = 'session';
@@ -71,8 +71,8 @@ export async function setConfigController(context: PmaContext): Promise<Response
 	if (typeof key !== 'string' || typeof value !== 'string') {
 		return missingParameters(context);
 	}
-	const config = context.config as unknown as Record<string, unknown>;
-	const defaultValue = arrayRead(key, configDefaults as unknown as Record<string, unknown>, null);
+	const config: Record<string, unknown> = context.config;
+	const defaultValue = arrayRead(key, configDefaults, null);
 	setUserValue(context.session, config, key, jsonDecode(value), defaultValue, Math.floor(Date.now() / 1000));
 	return context.response.response();
 }

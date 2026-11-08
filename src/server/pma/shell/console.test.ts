@@ -11,7 +11,10 @@ const live = readFileSync(new URL('../../../../tests/fixtures/pma-5.2.3/home.liv
 
 function fakeContext(isAjax: boolean): PmaContext {
 	const url = { server: 1, serverDefault: 1, lang: 'en', hasLangCookie: true, token: 't' };
-	return { response: { isAjax }, templateState: async () => { return { url, mysqlVersion: 80413 }; } } as unknown as PmaContext;
+	return { response: { isAjax },
+		templateState: async () => {
+			return { url, mysqlVersion: 80413 };
+		} } as unknown as PmaContext;
 }
 
 describe('renderConsole', () => {

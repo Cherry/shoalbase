@@ -97,7 +97,9 @@ const IMPORT_PLUGINS: Record<string, (param: ImportPluginParam) => PluginPropert
 export function getImportList(param: ImportPluginParam): PluginInfo[] {
 	return Object.keys(IMPORT_PLUGINS)
 		.filter(name => name !== 'ldi' || param.importType === 'table')
-		.map((name) => { return { name, properties: IMPORT_PLUGINS[name](param) }; })
+		.map((name) => {
+			return { name, properties: IMPORT_PLUGINS[name](param) };
+		})
 		.toSorted((left, right) => strcasecmp(left.properties.text, right.properties.text));
 }
 

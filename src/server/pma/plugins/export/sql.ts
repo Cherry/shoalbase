@@ -233,10 +233,12 @@ export class ExportSql extends ExportPlugin {
 			const row = status.fetchAssoc() ?? {};
 			for (const [key, label] of [['Create_time', 'Creation:'], ['Update_time', 'Last update:'], ['Check_time', 'Last check:']]) {
 				const value = row[key];
-				if (showDates && value !== null && value !== undefined && !isEmpty(value)) {
-					schemaCreate += this.exportComment(`${label} ${localisedDate(timestamp(value))}`);
-					newCrlf = this.exportComment() + crlf;
+				if (!showDates || value === null || value === undefined || isEmpty(value)) {
+					continue;
 				}
+
+				schemaCreate += this.exportComment(`${label} ${localisedDate(timestamp(value))}`);
+				newCrlf = this.exportComment() + crlf;
 			}
 		}
 		schemaCreate += newCrlf;

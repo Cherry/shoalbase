@@ -132,13 +132,9 @@ export function buildForeignDropdown(foreign: [string, string][], data: string, 
 	return options;
 }
 
+// Only called with an array or object, where $order[$index] reads a list and a keyed array alike.
 function dropdownOrder(order: unknown, index: number): string {
-	let value: unknown;
-	if (Array.isArray(order)) {
-		value = order[index];
-	} else if (order !== null && typeof order === 'object') {
-		value = (order as Record<string, unknown>)[index];
-	}
+	const value: unknown = (order as Record<number, unknown>)[index];
 	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
 		return String(value);
 	}

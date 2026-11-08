@@ -27,7 +27,7 @@ export function strGetCsv(line: string): string[] {
 	for (;;) {
 		let field = '';
 		// fgetcsv() drops whitespace before an opening quote, as in "enum('a', 'b')".
-		const leading = /^[\t\n\v\f\r ]*/.exec(line.slice(index))?.[0].length ?? 0;
+		const leading = line.slice(index).search(/[^\t\n\v\f\r ]|$/);
 		if (line[index + leading] === '\'') {
 			index += leading;
 		}

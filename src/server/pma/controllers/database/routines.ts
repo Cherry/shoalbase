@@ -37,7 +37,7 @@ import { getCharsets } from '../../core/charsets.ts';
 import { getMessage } from '../../core/generator.ts';
 import { currentUserHasPrivilege } from '../../shell/menu.ts';
 
-import type { AnalyzedColumn, EditConfig } from '../../../../lib/pma/table-data/insert-edit.ts';
+import type { EditConfig } from '../../../../lib/pma/table-data/insert-edit.ts';
 import type { ServerKind } from '../../../../lib/pma/table-structure/types.ts';
 import type { PmaContext } from '../../core/context.ts';
 
@@ -79,6 +79,7 @@ async function getDataFromName(context: PmaContext, name: unknown, type: unknown
 		return null;
 	}
 	loadParserContext(context);
+	// eslint-disable-next-line antislop/no-chained-type-assertions -- the SELECT above names exactly the RoutineRow columns, but the DBI returns untyped rows.
 	return routineDataFromDefinition(row as unknown as RoutineRow, definition, all);
 }
 
@@ -119,7 +120,9 @@ async function getRow(context: PmaContext, routine: RoutineInfo, rowClass = ''):
 /** Charsets::getCharsets() as the routine forms list them. */
 async function charsetList(context: PmaContext): Promise<{ name: string; description: string; }[]> {
 	const charsets = await getCharsets(context);
-	return charsets.values().map((charset) => { return { name: charset.getName(), description: charset.getDescription() }; }).toArray();
+	return charsets.values().map((charset) => {
+		return { name: charset.getName(), description: charset.getDescription() };
+	}).toArray();
 }
 
 /** Routines::getParameterRow(); without a routine it is the template row the editor's JavaScript copies. */
@@ -139,7 +142,9 @@ async function getParameterRow(context: PmaContext, routine: RoutineData | null 
 	}
 	const selectedCharset = String(data.item_param_opts_text[position] ?? '').toLowerCase();
 	const list = await charsetList(context);
-	const charsets = list.map((charset) => { return { ...charset, is_selected: charset.name === selectedCharset }; });
+	const charsets = list.map((charset) => {
+		return { ...charset, is_selected: charset.name === selectedCharset };
+	});
 	return render(context, 'database/routines/parameter_row', {
 		class: rowClass,
 		index: rowIndex,
@@ -448,7 +453,7 @@ async function getExecuteForm(context: PmaContext, source: RoutineData): Promise
 	const routine: RoutineData = { ...source, item_name: htmlentities(source.item_name), item_param_name: source.item_param_name.map(name => htmlentities(name)) };
 	// A Map keeps the integer keys Twig looks up with loop.index0.
 	const params = new Map<string | number, unknown>([['no_support_types', []]]);
-	const editConfig = config as unknown as EditConfig;
+	const editConfig: EditConfig = config;
 	const flavor = { isMariaDB: dbi.isMariaDB(), version: dbi.getVersion() };
 	for (let index = 0; index < routine.item_num_params; index++) {
 		const type = String(routine.item_param_type[index] ?? '');
@@ -462,7 +467,7 @@ async function getExecuteForm(context: PmaContext, source: RoutineData): Promise
 			if (/enum|set/i.test(type)) {
 				param.generator = null;
 			} else {
-				const field = { True_Type: type.toLowerCase(), Type: '', Key: '', Field: '', Default: '', first_timestamp: false } as unknown as AnalyzedColumn;
+				const field = { True_Type: type.toLowerCase(), Type: '', Key: '', Field: '', Default: '', first_timestamp: false };
 				param.generator = getFunctionsForField(field, false, false, editConfig, flavor);
 			}
 		}

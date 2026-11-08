@@ -43,7 +43,9 @@ function fakeContext(options: FakeOptions = {}): PmaContext {
 		table: options.table ?? '',
 		server: url.server,
 		urlState: () => url,
-		templateState: async () => { return { url, config, mysqlVersion: 80413 }; },
+		templateState: async () => {
+			return { url, config, mysqlVersion: 80413 };
+		},
 		session: options.session ?? new PmaSession(),
 		dbi: { fetchValue: async () => profiling, getColumns: async (_db: string, table: string) => new Map(table === 'gone' ? [] : [['id', {}]]) },
 		response: { isAjax: false, globals: { sqlQuery: options.sqlQuery ?? '' } },

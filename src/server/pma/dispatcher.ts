@@ -111,7 +111,9 @@ const dispatchRequest = async (astro: APIContext): Promise<Response> => {
 	const { auth, connection } = astro.locals;
 	// rawPost is already parsed; parsing it again would drop the name[] lists.
 	const request = buildPmaRequest(method, query, rawPost, auth?.token);
-	if (!auth || !connection) { return signedOut(astro, request, rawPost); }
+	if (!auth || !connection) {
+		return signedOut(astro, request, rawPost);
+	}
 
 	const match = matchRoute(upstreamRoutes, method, request.route);
 	const context = createPmaContext({

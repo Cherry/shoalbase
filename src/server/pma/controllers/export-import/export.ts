@@ -237,6 +237,7 @@ function queryAliases(context: PmaContext, sqlQuery: string): ExportAliases {
 	if (!(statement instanceof SelectStatement)) {
 		return {};
 	}
+	// eslint-disable-next-line antislop/no-chained-type-assertions -- the parser's alias tree holds nulls and token values where Export's reads them loosely, as PHP does.
 	return Misc.getAliases(statement, context.db) as unknown as ExportAliases;
 }
 
@@ -397,9 +398,9 @@ function filenameAndMimetype(context: PmaContext, exportType: string, rememberTe
 	};
 	if (rememberTemplate) {
 		const [cookie, path] = paths[exportType] ?? ['pma_table_filename_template', 'Export/file_template_table'];
-		const defaults = context.baseConfig.Export as unknown as Record<string, unknown>;
+		const defaults: Record<string, unknown> = context.baseConfig.Export;
 		const defaultValue = defaults[path.slice('Export/'.length)];
-		setUserValue(context.session, context.config as unknown as Record<string, unknown>, path, template, defaultValue ?? null, Math.floor(Date.now() / 1000));
+		setUserValue(context.session, context.config, path, template, defaultValue ?? null, Math.floor(Date.now() / 1000));
 		setConfigCookie(context, cookie, template, typeof defaultValue === 'string' ? defaultValue : '\0');
 	}
 	const { config } = context;
@@ -593,7 +594,7 @@ async function runExport(run: ExportRun, plugin: ExportPlugin, what: string, exp
 	let whatStrucOrData = run.str(`${what}_structure_or_data`);
 	if (!STRUCTURE_OR_DATA.has(whatStrucOrData)) {
 		whatStrucOrData = 'data';
-		const configured = (context.config.Export as unknown as Record<string, unknown>)[`${what}_structure_or_data`];
+		const configured = (context.config.Export as Record<string, unknown>)[`${what}_structure_or_data`];
 		if (typeof configured === 'string' && STRUCTURE_OR_DATA.has(configured)) {
 			whatStrucOrData = configured;
 		}

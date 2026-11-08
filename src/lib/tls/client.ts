@@ -135,14 +135,20 @@ export const parseTls13Inner = (plaintext: Bytes): { type: number; data: Bytes; 
 	while (end >= 0 && plaintext[end] === 0) {
 		end -= 1;
 	}
-	if (end < 0) { throw new TlsError('TLS record has no content type.', 10); }
+	if (end < 0) {
+		throw new TlsError('TLS record has no content type.', 10);
+	}
 	return { type: plaintext[end] as number, data: plaintext.subarray(0, end) };
 };
 
 /** What a TLS 1.3 post-handshake message requires; tickets are ignored because sessions are never resumed. */
 export const tls13PostHandshakeAction = (type: number, body: Bytes): 'ignore' | 'update' | 'update-and-reply' => {
-	if (type === HS_NEW_SESSION_TICKET) { return 'ignore'; }
-	if (type !== HS_KEY_UPDATE || body.length !== 1 || (body[0] as number) > 1) { throw new TlsError('Unexpected post-handshake message.', 10); }
+	if (type === HS_NEW_SESSION_TICKET) {
+		return 'ignore';
+	}
+	if (type !== HS_KEY_UPDATE || body.length !== 1 || (body[0] as number) > 1) {
+		throw new TlsError('Unexpected post-handshake message.', 10);
+	}
 	return body[0] === 1 ? 'update-and-reply' : 'update';
 };
 
@@ -187,7 +193,9 @@ class RecordLayer {
 
 	private async seal(type: number, data: Bytes): Promise<Bytes> {
 		const state = this.writeState;
-		if (!state) { return concat(recordHeader(type, data.length), data); }
+		if (!state) {
+			return concat(recordHeader(type, data.length), data);
+		}
 		const sequence = state.sequence;
 		state.sequence += 1n;
 		if (state.tls13) {
@@ -205,7 +213,9 @@ class RecordLayer {
 		for (;;) {
 			if (this.pending.length >= RECORD_HEADER) {
 				const length = ((this.pending[3] as number) << 8) | (this.pending[4] as number);
-				if (length > MAX_CIPHERTEXT) { throw new TlsError('TLS record is too large.', 22); }
+				if (length > MAX_CIPHERTEXT) {
+					throw new TlsError('TLS record is too large.', 22);
+				}
 				if (this.pending.length >= RECORD_HEADER + length) {
 					const record = this.pending.slice(0, RECORD_HEADER + length);
 					this.pending = this.pending.slice(RECORD_HEADER + length);
@@ -214,7 +224,9 @@ class RecordLayer {
 			}
 			const chunk = await this.transport.read();
 			if (!chunk) {
-				if (this.pending.length === 0) { return null; }
+				if (this.pending.length === 0) {
+					return null;
+				}
 				throw new TlsError('Connection closed in the middle of a TLS record.');
 			}
 			this.pending = concat(this.pending, chunk);
@@ -242,20 +254,28 @@ class RecordLayer {
 
 	async read(): Promise<{ type: number; data: Bytes; } | null> {
 		const record = await this.nextRecord();
-		if (!record) { return null; }
+		if (!record) {
+			return null;
+		}
 		const header = record.subarray(0, RECORD_HEADER);
 		const type = header[0] as number;
 		const body = record.subarray(RECORD_HEADER);
 		const state = this.readState;
 		// TLS 1.3 servers may send a plaintext dummy ChangeCipherSpec for middlebox compatibility.
-		if (!state || (state.tls13 && type === CONTENT_CHANGE_CIPHER_SPEC)) { return { type, data: body }; }
+		if (!state || (state.tls13 && type === CONTENT_CHANGE_CIPHER_SPEC)) {
+			return { type, data: body };
+		}
 		if (state.tls13) {
-			if (type !== CONTENT_APPLICATION_DATA) { throw new TlsError('Unexpected unencrypted TLS record.', 10); }
+			if (type !== CONTENT_APPLICATION_DATA) {
+				throw new TlsError('Unexpected unencrypted TLS record.', 10);
+			}
 			const plaintext = await aesGcmDecrypt(state.key, tls13Nonce(state.iv, state.sequence), header, body);
 			state.sequence += 1n;
 			return parseTls13Inner(plaintext);
 		}
-		if (body.length < TLS12_EXPLICIT_NONCE + GCM_TAG) { throw new TlsError('TLS record is too short.', 50); }
+		if (body.length < TLS12_EXPLICIT_NONCE + GCM_TAG) {
+			throw new TlsError('TLS record is too short.', 50);
+		}
 		const nonce = concat(state.iv, body.subarray(0, TLS12_EXPLICIT_NONCE));
 		const aad = concat(sequenceBytes(state.sequence), new Uint8Array([type]), uint(TLS12, 2), uint(body.length - TLS12_EXPLICIT_NONCE - GCM_TAG, 2));
 		const data = await aesGcmDecrypt(state.key, nonce, aad, body.subarray(TLS12_EXPLICIT_NONCE));
@@ -273,29 +293,39 @@ interface HandshakeMessage {
 /** Maps an alert record to an error; close_notify (0) is an orderly end of stream and maps to null. */
 export const alertError = (data: Bytes): TlsError | null => {
 	const description = data[1];
-	if (description === 0) { return null; }
+	if (description === 0) {
+		return null;
+	}
 	return new TlsError(`The server sent TLS alert ${description ?? 'unknown'}.`, description);
 };
 
 const parseExtensions = (reader: ByteReader): Map<number, Bytes> => {
 	const extensions = new Map<number, Bytes>();
-	if (reader.remaining === 0) { return extensions; }
+	if (reader.remaining === 0) {
+		return extensions;
+	}
 	const list = new ByteReader(reader.vector(2));
 	while (list.remaining > 0) {
 		const type = list.uint(2);
-		if (extensions.has(type)) { throw new TlsError('Duplicate TLS extension.', 47); }
+		if (extensions.has(type)) {
+			throw new TlsError('Duplicate TLS extension.', 47);
+		}
 		extensions.set(type, list.vector(2));
 	}
 	return extensions;
 };
 
 const requireType = (message: HandshakeMessage, type: number): void => {
-	if (message.type !== type) { throw new TlsError(`Unexpected TLS handshake message ${message.type}.`, 10); }
+	if (message.type !== type) {
+		throw new TlsError(`Unexpected TLS handshake message ${message.type}.`, 10);
+	}
 };
 
 /** Finished proves both sides saw the same handshake; only a server holding the session keys can produce it. */
 export const assertFinished = (received: Bytes, expected: Bytes): void => {
-	if (!equalBytes(received, expected)) { throw new TlsError('Server Finished verification failed.', 51); }
+	if (!equalBytes(received, expected)) {
+		throw new TlsError('Server Finished verification failed.', 51);
+	}
 };
 
 interface ServerHello {
@@ -350,20 +380,26 @@ class Handshake {
 		const compression = reader.uint(1);
 		const extensions = parseExtensions(reader);
 		reader.end();
-		if (equalBytes(random, HELLO_RETRY_RANDOM)) { throw new TlsError('The server requested a key share this client does not offer.', 40); }
+		if (equalBytes(random, HELLO_RETRY_RANDOM)) {
+			throw new TlsError('The server requested a key share this client does not offer.', 40);
+		}
 		const suite = CIPHER_SUITES.find(candidate => candidate.id === suiteId);
 		const versionExtension = extensions.get(EXT_SUPPORTED_VERSIONS);
 		const tls13 = versionExtension !== undefined && new ByteReader(versionExtension).uint(2) === TLS13;
 		if (!suite || compression !== 0 || legacyVersion !== TLS12 || suite.tls13 !== tls13) {
 			throw new TlsError('The server chose TLS parameters this client did not offer.', 47);
 		}
-		if (versionExtension !== undefined && !tls13) { throw new TlsError('The server chose an unsupported TLS version.', 70); }
+		if (versionExtension !== undefined && !tls13) {
+			throw new TlsError('The server chose an unsupported TLS version.', 70);
+		}
 		return { random, sessionId, suite, tls13, extensions };
 	}
 
 	private async runTls13(hello: ServerHello, shares: EcdhShare[]): Promise<TlsConnection> {
 		const { suite } = hello;
-		if (!equalBytes(hello.sessionId, this.sessionId)) { throw new TlsError('The server did not echo the session ID.', 47); }
+		if (!equalBytes(hello.sessionId, this.sessionId)) {
+			throw new TlsError('The server did not echo the session ID.', 47);
+		}
 		const hash = suite.hash;
 		const length = hashLength(hash);
 		this.ignoreChangeCipherSpec = true;
@@ -372,7 +408,9 @@ class Handshake {
 		const serverPublic = keyShare.vector(2);
 		keyShare.end();
 		const share = shares.find(candidate => NAMED_GROUPS[candidate.group] === groupId);
-		if (!share) { throw new TlsError('The server chose a key share this client did not offer.', 47); }
+		if (!share) {
+			throw new TlsError('The server chose a key share this client did not offer.', 47);
+		}
 		const sharedSecret = await ecdhSharedSecret(share, serverPublic);
 
 		const zeros = new Uint8Array(length);
@@ -449,7 +487,9 @@ class Handshake {
 		};
 		return this.connection('TLSv1.3', suite, peer, async (message) => {
 			const action = tls13PostHandshakeAction(message.type, message.body);
-			if (action === 'ignore') { return; }
+			if (action === 'ignore') {
+				return;
+			}
 			this.assertMessageBoundary();
 			await updateReadKeys();
 			if (action === 'update-and-reply') {
@@ -459,7 +499,9 @@ class Handshake {
 	}
 
 	private async runTls12(hello: ServerHello): Promise<TlsConnection> {
-		if (equalBytes(hello.random.subarray(24), DOWNGRADE_SENTINEL)) { throw new TlsError('TLS downgrade detected.', 47); }
+		if (equalBytes(hello.random.subarray(24), DOWNGRADE_SENTINEL)) {
+			throw new TlsError('TLS downgrade detected.', 47);
+		}
 		const { suite } = hello;
 		const hash = suite.hash;
 		const extendedMasterSecret = hello.extensions.has(EXT_EXTENDED_MASTER_SECRET);
@@ -468,7 +510,9 @@ class Handshake {
 		const certificates = new ByteReader(certificateMessage.body);
 		const leaf = new ByteReader(certificates.vector(3)).vector(3);
 		const peer = { certificate: leaf, spki: certificateSpki(leaf) };
-		if (spkiKeyType(peer.spki).kind !== suite.authentication) { throw new TlsError('Certificate key does not match the cipher suite.', 42); }
+		if (spkiKeyType(peer.spki).kind !== suite.authentication) {
+			throw new TlsError('Certificate key does not match the cipher suite.', 42);
+		}
 
 		const keyExchange = await this.expect(HS_SERVER_KEY_EXCHANGE);
 		const params = new ByteReader(keyExchange.body);
@@ -489,7 +533,9 @@ class Handshake {
 			const serverPublic = params.vector(1);
 			signedParams = keyExchange.body.subarray(0, keyExchange.body.length - params.remaining);
 			const group = (Object.keys(NAMED_GROUPS) as EcdhGroup[]).find(candidate => NAMED_GROUPS[candidate] === groupId);
-			if (curveType !== 3 || !group) { throw new TlsError('The server chose an unsupported ECDHE group.', 47); }
+			if (curveType !== 3 || !group) {
+				throw new TlsError('The server chose an unsupported ECDHE group.', 47);
+			}
 			const share = await generateEcdhShare(group);
 			premasterSecret = await ecdhSharedSecret(share, serverPublic);
 			clientKeyExchange = vector(share.publicKey, 1);
@@ -506,7 +552,9 @@ class Handshake {
 			doneOrRequest = await this.next();
 		}
 		requireType(doneOrRequest, HS_SERVER_HELLO_DONE);
-		if (doneOrRequest.body.length > 0) { throw new TlsError('Malformed ServerHelloDone.', 50); }
+		if (doneOrRequest.body.length > 0) {
+			throw new TlsError('Malformed ServerHelloDone.', 50);
+		}
 		this.assertMessageBoundary();
 
 		if (certificateRequested) {
@@ -527,8 +575,12 @@ class Handshake {
 		await this.send(handshakeMessage(HS_FINISHED, await prf(hash, masterSecret, 'client finished', await this.transcriptHash(hash), 12)));
 
 		const changeCipherSpec = await this.records.read();
-		if (changeCipherSpec?.type === CONTENT_ALERT) { throw alertError(changeCipherSpec.data) ?? new TlsError('The server closed the TLS handshake.'); }
-		if (changeCipherSpec?.type !== CONTENT_CHANGE_CIPHER_SPEC || !equalBytes(changeCipherSpec.data, new Uint8Array([1]))) { throw new TlsError('Expected ChangeCipherSpec.', 10); }
+		if (changeCipherSpec?.type === CONTENT_ALERT) {
+			throw alertError(changeCipherSpec.data) ?? new TlsError('The server closed the TLS handshake.');
+		}
+		if (changeCipherSpec?.type !== CONTENT_CHANGE_CIPHER_SPEC || !equalBytes(changeCipherSpec.data, new Uint8Array([1]))) {
+			throw new TlsError('Expected ChangeCipherSpec.', 10);
+		}
 		this.records.setReadState({ tls13: false, key: await importAesKey(serverKey), iv: serverIv, sequence: 0n });
 		const expectedFinished = await prf(hash, masterSecret, 'server finished', await this.transcriptHash(hash), 12);
 		const serverFinished = await this.expect(HS_FINISHED);
@@ -536,7 +588,9 @@ class Handshake {
 
 		return this.connection('TLSv1.2', suite, peer, async (message) => {
 			// Renegotiation is not supported; HelloRequest may be ignored per RFC 5246 section 7.4.1.1.
-			if (message.type !== HS_HELLO_REQUEST) { throw new TlsError('Unexpected post-handshake message.', 10); }
+			if (message.type !== HS_HELLO_REQUEST) {
+				throw new TlsError('Unexpected post-handshake message.', 10);
+			}
 		});
 	}
 
@@ -546,12 +600,18 @@ class Handshake {
 		const nextApplicationData = async (): Promise<Bytes | null> => {
 			for (;;) {
 				const record = await records.read();
-				if (!record) { return null; }
+				if (!record) {
+					return null;
+				}
 				if (record.type === CONTENT_APPLICATION_DATA) {
-					if (record.data.length > 0) { return record.data; }
+					if (record.data.length > 0) {
+						return record.data;
+					}
 				} else if (record.type === CONTENT_ALERT) {
 					const error = alertError(record.data);
-					if (error) { throw error; }
+					if (error) {
+						throw error;
+					}
 					return null;
 				} else if (record.type === CONTENT_HANDSHAKE) {
 					this.handshakeBuffer = concat(this.handshakeBuffer, record.data);
@@ -568,7 +628,9 @@ class Handshake {
 			cipherSuite: suite.name,
 			peer,
 			read: async () => {
-				if (closed) { return null; }
+				if (closed) {
+					return null;
+				}
 				const data = await nextApplicationData();
 				if (data === null) {
 					// eslint-disable-next-line require-atomic-updates -- there is a single reader; a concurrent close() also only sets true.
@@ -578,7 +640,9 @@ class Handshake {
 			},
 			write: data => records.write(CONTENT_APPLICATION_DATA, data),
 			close: async () => {
-				if (closed) { return; }
+				if (closed) {
+					return;
+				}
 				closed = true;
 				await records.write(CONTENT_ALERT, new Uint8Array([1, 0])).catch(() => {});
 			},
@@ -602,13 +666,19 @@ class Handshake {
 
 	/** Key changes must fall on record boundaries; leftover handshake bytes would be read under the wrong key. */
 	private assertMessageBoundary(): void {
-		if (this.handshakeBuffer.length > 0) { throw new TlsError('Handshake message crosses a key change.', 10); }
+		if (this.handshakeBuffer.length > 0) {
+			throw new TlsError('Handshake message crosses a key change.', 10);
+		}
 	}
 
 	private bufferedMessage(): HandshakeMessage | null {
-		if (this.handshakeBuffer.length < 4) { return null; }
+		if (this.handshakeBuffer.length < 4) {
+			return null;
+		}
 		const length = new ByteReader(this.handshakeBuffer.subarray(1, 4)).uint(3);
-		if (this.handshakeBuffer.length < 4 + length) { return null; }
+		if (this.handshakeBuffer.length < 4 + length) {
+			return null;
+		}
 		const raw = this.handshakeBuffer.slice(0, 4 + length);
 		this.handshakeBuffer = this.handshakeBuffer.slice(4 + length);
 		return { type: raw[0] as number, body: raw.subarray(4), raw };
@@ -622,10 +692,18 @@ class Handshake {
 				return message;
 			}
 			const record = await this.records.read();
-			if (!record) { throw new TlsError('The server closed the connection during the TLS handshake.'); }
-			if (record.type === CONTENT_ALERT) { throw alertError(record.data) ?? new TlsError('The server closed the TLS handshake.'); }
-			if (this.ignoreChangeCipherSpec && record.type === CONTENT_CHANGE_CIPHER_SPEC && equalBytes(record.data, new Uint8Array([1]))) { continue; }
-			if (record.type !== CONTENT_HANDSHAKE) { throw new TlsError('Unexpected TLS record during the handshake.', 10); }
+			if (!record) {
+				throw new TlsError('The server closed the connection during the TLS handshake.');
+			}
+			if (record.type === CONTENT_ALERT) {
+				throw alertError(record.data) ?? new TlsError('The server closed the TLS handshake.');
+			}
+			if (this.ignoreChangeCipherSpec && record.type === CONTENT_CHANGE_CIPHER_SPEC && equalBytes(record.data, new Uint8Array([1]))) {
+				continue;
+			}
+			if (record.type !== CONTENT_HANDSHAKE) {
+				throw new TlsError('Unexpected TLS record during the handshake.', 10);
+			}
 			this.handshakeBuffer = concat(this.handshakeBuffer, record.data);
 		}
 	}
@@ -640,7 +718,9 @@ class Handshake {
 		const shares = await Promise.all(KEY_SHARE_GROUPS.map(group => generateEcdhShare(group)));
 		await this.send(this.clientHello(shares));
 		const serverHello = this.parseServerHello(await this.expect(HS_SERVER_HELLO));
-		if (serverHello.tls13) { return this.runTls13(serverHello, shares); }
+		if (serverHello.tls13) {
+			return this.runTls13(serverHello, shares);
+		}
 		return this.runTls12(serverHello);
 	}
 }

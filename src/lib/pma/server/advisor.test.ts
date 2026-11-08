@@ -74,6 +74,11 @@ describe('evaluateExpression', () => {
 		expect(() => evaluate('[1 2]')).toThrow('An array element must be followed by a comma');
 	});
 
+	it('leaves the expression out of the syntax error only when it is empty, like Symfony\'s if ($expression)', () => {
+		expect(() => evaluate('')).toThrow(/^Unexpected token "end of expression" of value "" around position 1\.$/);
+		expect(() => evaluate('  ')).toThrow(/^Unexpected token "end of expression" of value "" around position 3 for expression ` {2}`\.$/);
+	});
+
 	it('exposes PHP truthiness and comparison', () => {
 		expect([phpBool([]), phpBool(['x']), phpBool('0'), phpBool('0.0')]).toEqual([false, true, false, true]);
 		expect(phpSpaceship('', null)).toBe(0);
@@ -159,5 +164,12 @@ describe('runAdvisor', () => {
 		expect(result.errors.some(error => error.includes('substr(): Argument #1 ($string) must be of type string, int given'))).toBe(true);
 		const round = runAdvisor({ variables: { ...base, Questions: '500', Slow_queries: '31' }, version: 80407, isMariaDB: false, url });
 		expect(round.fired.find(rule => rule.id === 'Percentage of slow queries')?.justification).toBe('The slow query rate should be below 5%, your value is 6%.');
+	});
+
+	it('checks the InnoDB log size against the buffer pool when InnoDB reports them', () => {
+		const innodb = { innodb_buffer_pool_size: '134217728', innodb_log_file_size: '5242880', innodb_log_files_in_group: '2' };
+		const result = runAdvisor({ variables: { ...base, ...innodb }, version: 80407, isMariaDB: false, url });
+		// 7.8125% shows as 8% because the Advisor's round() ignores the precision argument of round(value,1).
+		expect(result.fired.find(rule => rule.id === 'InnoDB log size')?.justification).toBe('Your InnoDB log size is at 8% in relation to the InnoDB buffer pool size, it should not be below 20%');
 	});
 });

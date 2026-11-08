@@ -46,7 +46,7 @@ const nowSeconds = (): number => Math.floor(Date.now() / 1000);
 /** CollationConnectionController: Config::setUserValue() keeps the choice in the session's user preferences. */
 export async function collationConnectionController(context: PmaContext): Promise<Response> {
 	const collation = context.request.post.collation_connection;
-	const config = context.config as unknown as Record<string, unknown>;
+	const config: Record<string, unknown> = context.config;
 	setUserValue(context.session, config, 'DefaultConnectionCollation', collation ?? null, 'utf8mb4_unicode_ci', nowSeconds());
 	context.response.header('Location', homeLocation(context));
 	return context.response.response();

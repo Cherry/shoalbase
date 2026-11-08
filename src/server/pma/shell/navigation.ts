@@ -142,10 +142,12 @@ class NavigationTree {
 					this.pos2Name[count] = post(`n${count}_pos2_name`) as string;
 					this.pos2Value[count] = toInt(post(`n${count}_pos2_value`));
 				}
-				if (post(`n${count}_pos3_name`) !== undefined) {
-					this.pos3Name[count] = post(`n${count}_pos3_name`) as string;
-					this.pos3Value[count] = toInt(post(`n${count}_pos3_value`));
+				if (post(`n${count}_pos3_name`) === undefined) {
+					continue;
 				}
+
+				this.pos3Name[count] = post(`n${count}_pos3_name`) as string;
+				this.pos3Value[count] = toInt(post(`n${count}_pos3_value`));
 			}
 		} else {
 			this.aPath[0] = parsePath(aPath);

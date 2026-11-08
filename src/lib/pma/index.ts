@@ -315,12 +315,13 @@ export function findDuplicateIndexes(indexes: Iterable<Index>): string {
 	}
 	for (let index = stack.pop(); index !== undefined; index = stack.pop()) {
 		const twin = stack.find(other => other.getCompareData() === index.getCompareData());
-		if (twin !== undefined) {
-			const message = Message.notice('The indexes %1$s and %2$s seem to be equal and one of them could possibly be removed.');
-			message.addParam(twin.getName());
-			message.addParam(index.getName());
-			output += message.getDisplay();
+		if (twin === undefined) {
+			continue;
 		}
+		const message = Message.notice('The indexes %1$s and %2$s seem to be equal and one of them could possibly be removed.');
+		message.addParam(twin.getName());
+		message.addParam(index.getName());
+		output += message.getDisplay();
 	}
 	return output;
 }

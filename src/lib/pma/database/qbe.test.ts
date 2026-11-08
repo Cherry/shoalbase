@@ -148,6 +148,8 @@ describe('join building', () => {
 		const finalized = new Map([['child', '']]);
 		fillJoinClauses(finalized, relations, ['child', 'parent']);
 		expect(finalized.keys().toArray()).toEqual(['child', 'parent']);
+		// With every table joined, the FROM clause starts at the master without a leading comma.
+		expect(joinClause(unfinalizedTables(['child', 'parent'], finalized), finalized)).toBe('`child`\n    LEFT JOIN `parent` ON `child`.`pid` = `parent`.`id`');
 		const empty = new Map<string, string>();
 		fillJoinClauses(empty, relations, ['child', 'unknown']);
 		expect(empty.size).toBe(0);

@@ -18,8 +18,8 @@ export const nowSeconds = (): number => Math.floor(Date.now() / 1000);
 
 /** new ConfigFile($config->baseSettings) and UserPreferences::pageInit(). */
 export function pageInit(context: PmaContext): UserConfigFile {
-	const cf = new UserConfigFile(context.baseConfig as unknown as Record<string, unknown>, userFormFields());
-	cf.updateWithGlobalConfig(context.config as unknown as Record<string, unknown>);
+	const cf = new UserConfigFile(context.baseConfig, userFormFields());
+	cf.updateWithGlobalConfig(context.config);
 	return cf;
 }
 
@@ -35,7 +35,7 @@ export async function renderPreferencesHeader(context: PmaContext): Promise<stri
 
 /** Config::loadUserPreferences() after a save: $cfg is rebuilt in place, as the renderer and dbi hold the same object. */
 export function reloadUserPreferences(context: PmaContext): void {
-	const config = context.config as unknown as Record<string, unknown>;
+	const config: Record<string, unknown> = context.config;
 	for (const key of Object.keys(config)) {
 		delete config[key];
 	}

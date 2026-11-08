@@ -86,6 +86,9 @@ describe('CreateAddField.getTableCreationQuery', () => {
 describe('CreateAddField.getColumnCreationQuery', () => {
 	it('tolerates an index without columns and a partition posted as text', () => {
 		expect(create({ indexes: '[{"Key_name":"k"}]', field_where: 'last' }).getColumnCreationQuery('t')).toBe('ALTER TABLE `t` ADD INDEX `k` ();');
+		// json_decode() gives a scalar here, which upstream's foreach skips.
+		expect(create({ 'field_name[0]': 'a', 'field_type[0]': 'INT', 'field_default_type[0]': 'NONE', 'indexes': '"k"', 'primary_indexes': '1', 'field_where': 'last' }).getColumnCreationQuery('t'))
+			.toBe('ALTER TABLE `t` ADD `a` INT NOT NULL ;');
 		expect(create({ 'partition_by': 'HASH', 'partition_expr': 'id', 'partition_count': '2', 'partitions[0]': 'x', 'partitions[1][name]': 'p1', 'partitions[1][subpartitions][0]': 'y' }).getPartitionsDefinition())
 			.toBe(' PARTITION BY HASH (id) PARTITIONS 2 ( PARTITION ,  PARTITION p1 ( SUBPARTITION ))');
 	});

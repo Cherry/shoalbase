@@ -19,7 +19,9 @@ export const concat = (...parts: Bytes[]): Bytes => {
 };
 
 export const equalBytes = (left: Bytes, right: Bytes): boolean => {
-	if (left.length !== right.length) { return false; }
+	if (left.length !== right.length) {
+		return false;
+	}
 	let difference = 0;
 	for (const [index, value] of left.entries()) {
 		difference |= value ^ (right[index] as number);
@@ -52,7 +54,9 @@ export class ByteReader {
 	}
 
 	read(length: number): Bytes {
-		if (length > this.remaining) { throw new TlsError('Malformed TLS message.', 50); }
+		if (length > this.remaining) {
+			throw new TlsError('Malformed TLS message.', 50);
+		}
 		const slice = this.bytes.subarray(this.offset, this.offset + length);
 		this.offset += length;
 		return slice;
@@ -71,6 +75,8 @@ export class ByteReader {
 	}
 
 	end(): void {
-		if (this.remaining !== 0) { throw new TlsError('Unexpected trailing bytes in TLS message.', 50); }
+		if (this.remaining !== 0) {
+			throw new TlsError('Unexpected trailing bytes in TLS message.', 50);
+		}
 	}
 }

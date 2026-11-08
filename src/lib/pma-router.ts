@@ -41,12 +41,16 @@ export const matchRoute = <T extends RoutePattern>(routes: T[], method: string, 
 	const allowed: string[] = [];
 	for (const route of routes) {
 		const match = compileRoutePattern(route.path).exec(path);
-		if (!match) { continue; }
+		if (!match) {
+			continue;
+		}
 		if (route.methods.includes(method)) {
 			return { status: 'found', route, params: { ...match.groups } };
 		}
 		allowed.push(...route.methods);
 	}
-	if (allowed.length > 0) { return { status: 'method-not-allowed', allowed }; }
+	if (allowed.length > 0) {
+		return { status: 'method-not-allowed', allowed };
+	}
 	return { status: 'not-found' };
 };

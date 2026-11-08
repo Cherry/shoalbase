@@ -316,7 +316,7 @@ class Qbe {
 		if (whereTables.size === 1) {
 			return whereTables.keys().toArray()[0];
 		}
-		let candidates = whereColumns.size > 0 ? new Map(whereColumns) : new Map(searchTables.map(table => [table, table]));
+		let candidates = new Map(whereColumns.size > 0 ? whereColumns : searchTables.map((table): [string, string] => [table, table]));
 		const foreignTables = new Map<string, string>();
 		for (const table of candidates.values()) {
 			const foreigners = await getForeigners(context, context.db, table);

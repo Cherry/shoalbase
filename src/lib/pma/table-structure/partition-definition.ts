@@ -47,7 +47,9 @@ function listOf(value: PhpValue | undefined, count: number): PartitionFields[] {
 	if (array === undefined) {
 		return [];
 	}
-	return Object.values(array).slice(0, Math.max(count, 0)).map((item) => { return { ...phpArray(item) }; });
+	return Object.values(array).slice(0, Math.max(count, 0)).map((item) => {
+		return { ...phpArray(item) };
+	});
 }
 
 function subpartitionsOf(partition: PartitionFields, count: number): PartitionFields[] {

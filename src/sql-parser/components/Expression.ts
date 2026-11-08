@@ -329,10 +329,10 @@ export class Expression extends Component {
 
 	/** `$expression->$field`; LOAD DATA parses into a dynamic `file` property. */
 	getField(field: string): TokenValue {
-		return (this as unknown as Record<string, TokenValue | undefined>)[field] ?? null;
+		return (Reflect.get(this, field) as TokenValue | undefined) ?? null;
 	}
 
 	setField(field: string, value: TokenValue): void {
-		(this as unknown as Record<string, TokenValue>)[field] = value;
+		Reflect.set(this, field, value);
 	}
 }

@@ -39,6 +39,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run test:coverage
+      - run: npm run test:workers
       - run: npm run build
 
   # Fails when actions.lock drifts from the workflows or a locked pin no longer verifies upstream.

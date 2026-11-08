@@ -82,7 +82,9 @@ export async function getEvents(context: PmaContext, db: string, name = ''): Pro
 	const { dbi } = context;
 	const query = eventsQuery(dbi.escapeString(db), await dbi.getCollateForIS(), name === '' ? null : dbi.escapeString(name));
 	const rows = await dbi.fetchResult(query);
-	return byName(rows.map((row) => { return { name: String(row.Name ?? ''), type: String(row.Type ?? ''), status: String(row.Status ?? '') }; }));
+	return byName(rows.map((row) => {
+		return { name: String(row.Name ?? ''), type: String(row.Type ?? ''), status: String(row.Status ?? '') };
+	}));
 }
 
 /** QueryGenerator::getInformationSchemaRoutinesRequest(). */

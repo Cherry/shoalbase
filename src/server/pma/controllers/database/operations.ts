@@ -99,12 +99,14 @@ async function renameOrCopy(context: PmaContext, move: boolean, newName: string)
 		if (!copied.ok) {
 			break;
 		}
-		if (triggers.length > 0) {
-			await dbi.selectDb(newName);
-			for (const trigger of triggers) {
-				await dbi.query(trigger.create);
-				globals.sqlQuery += `\n${trigger.create};`;
-			}
+		if (triggers.length === 0) {
+			continue;
+		}
+
+		await dbi.selectDb(newName);
+		for (const trigger of triggers) {
+			await dbi.query(trigger.create);
+			globals.sqlQuery += `\n${trigger.create};`;
 		}
 	}
 	for (const view of views) {

@@ -38,7 +38,7 @@ function checkedClause(name: string, list: string[]): boolean {
 
 // Config::checkboxCheck() in Export\Options: the $cfg['Export'] flag is set and truthy.
 function exportFlag(context: PmaContext, name: string): boolean {
-	return Boolean((context.config.Export as unknown as Record<string, unknown>)[name]);
+	return Boolean((context.config.Export as Record<string, unknown>)[name]);
 }
 
 /** Options::getDatabasesForSelectOptions(). */
@@ -51,7 +51,9 @@ async function databasesForSelect(context: PmaContext): Promise<{ name: string; 
 		selected = posted;
 	}
 	const databases = await context.dbi.getDatabaseList();
-	return databases.filter(name => !isSystemSchema(name, true)).map((name) => { return { name, is_selected: selected === null || selected.includes(name) }; });
+	return databases.filter(name => !isSystemSchema(name, true)).map((name) => {
+		return { name, is_selected: selected === null || selected.includes(name) };
+	});
 }
 
 /** Export\Options::getFileNameTemplate(): Config::getUserValue() prefers the cookie of the same name. */

@@ -50,7 +50,7 @@ const configPath = (path: string): string => path.replace(/^Servers\/1\//, 'Serv
 
 /** FormDisplay::displayFieldInput() for each field, plus FormDisplay::getDisplay() around them. */
 export async function renderFormDisplay(context: PmaContext, input: FormDisplayInput, state: TemplateStateInput): Promise<string> {
-	const config = context.config as unknown as Record<string, unknown>;
+	const config: Record<string, unknown> = context.config;
 	const jsArray: string[] = [];
 	const jsDefault: string[] = [];
 	const tabs: Record<string, string> = {};
@@ -164,11 +164,11 @@ function processForms(context: PmaContext, forms: ConfigForm[]): { errors: Error
 	if (errors.size > 0) {
 		return { errors, posted: read.values };
 	}
-	const config = structuredClone(context.config) as unknown as Record<string, unknown>;
+	const config: Record<string, unknown> = structuredClone(context.config);
 	for (const [path, value] of read.values) {
 		arrayWrite(configPath(path), config, value);
 	}
-	const baseConfig = context.baseConfig as unknown as Record<string, unknown>;
+	const baseConfig: Record<string, unknown> = context.baseConfig;
 	saveUserPreferences(context.session, userPreferencesToSave(config, baseConfig), Math.floor(Date.now() / 1000));
 	return { errors, posted: read.values };
 }

@@ -5,12 +5,7 @@ import { structureController } from './structure.ts';
 import { Message } from '../../../../lib/pma/message.ts';
 import { nestedParams } from '../../../../lib/pma/table-data/php-params.ts';
 import { CreateAddField } from '../../../../lib/pma/table-structure/create-add-field.ts';
-import {
-	type ParsedPartitioning,
-	type PartitionDetails,
-	getPartitionDetails,
-	partitionDetailsFromStatement,
-} from '../../../../lib/pma/table-structure/partition-definition.ts';
+import { type PartitionDetails, getPartitionDetails, partitionDetailsFromStatement } from '../../../../lib/pma/table-structure/partition-definition.ts';
 import { backquote } from '../../../../lib/twig/sanitize.ts';
 import { Context, CreateStatement, Parser } from '../../../../sql-parser/index.ts';
 import { getMessage } from '../../core/generator.ts';
@@ -30,7 +25,7 @@ async function extractPartitionDetails(context: PmaContext): Promise<PartitionDe
 	// The parser keywords are global state, so they are loaded right before parsing.
 	Context.loadClosest(`${dbi.isMariaDB() ? 'MariaDb' : 'MySql'}${dbi.getVersion()}`);
 	const statement = new Parser(createTable).statements[0];
-	return partitionDetailsFromStatement(statement instanceof CreateStatement ? statement as unknown as ParsedPartitioning : {});
+	return partitionDetailsFromStatement(statement instanceof CreateStatement ? statement : {});
 }
 
 /** PartitioningController::updatePartitioning(). */

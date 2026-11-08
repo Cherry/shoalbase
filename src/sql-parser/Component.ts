@@ -14,6 +14,7 @@ export interface ComponentClass {
 export abstract class Component {
 	/** __toString(): string concatenation of a component builds it. */
 	toString(): string {
+		// eslint-disable-next-line antislop/no-chained-type-assertions -- TypeScript types this.constructor as Function, so the subclass's static side needs an explicit lookup.
 		return (this.constructor as unknown as ComponentClass).build(this);
 	}
 }

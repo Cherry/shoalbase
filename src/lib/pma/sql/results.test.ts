@@ -261,6 +261,12 @@ describe('sorting', () => {
 		expect(multi).toBe('\nORDER BY LENGTH(`a`) ASC, `u`.`b` ASC, `t`.`c` ASC');
 	});
 
+	it('sorts a column named after a function call without the table prefix', () => {
+		const [single, multi] = singleAndMultiSortUrls([''], [''], '`t`.', 'COUNT(*)', [''], meta(MysqlType.LONGLONG), 'ASC');
+		expect(single).toBe('\nORDER BY `COUNT(*)` ASC');
+		expect(multi).toBe('\nORDER BY COUNT(*) ASC');
+	});
+
 	it('offers each index in both directions before the trailing clause', () => {
 		const options = sortByKeyOptions([['PRIMARY', ['id']], ['ab', ['a', 'b']]], ['`a` DESC, `b` DESC'], 'SELECT * FROM t\nLIMIT 5');
 		expect(options).toEqual([

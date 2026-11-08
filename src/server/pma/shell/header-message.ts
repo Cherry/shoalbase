@@ -148,7 +148,7 @@ export async function getGeneratorMessage(context: PmaContext, message: Message 
 	const displayQuery = context.response.globals.displayQuery;
 	const sqlQuery = options.sqlQuery ?? (displayQuery !== undefined && displayQuery !== '' && displayQuery !== '0' ? displayQuery : context.response.globals.sqlQuery);
 	const renderSql = config.ShowSQL && sqlQuery !== '' && sqlQuery !== ';';
-	const generatorState = toGeneratorState(createTemplateState({ config: config as unknown as Record<string, unknown> }));
+	const generatorState = toGeneratorState(createTemplateState({ config }));
 
 	let html = '';
 	if (renderSql) {

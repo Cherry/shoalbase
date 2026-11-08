@@ -16,10 +16,16 @@ export async function overviewController(context: PmaContext): Promise<Response>
 	const { response } = context;
 	response.disableMenuAndConsole();
 	const types = getAvailableMimeTypes();
-	const mimeTypes = Object.values(types.mimetype).map((name) => { return { name, is_empty: types.empty_mimetype?.[name] !== undefined }; });
+	const mimeTypes = Object.values(types.mimetype).map((name) => {
+		return { name, is_empty: types.empty_mimetype?.[name] !== undefined };
+	});
 	const transformations = {
-		transformation: types.transformation.map((name, index) => { return { name, description: getDescription(types.transformation_file[index]) }; }),
-		input_transformation: types.input_transformation.map((name, index) => { return { name, description: getDescription(types.input_transformation_file[index]) }; }),
+		transformation: types.transformation.map((name, index) => {
+			return { name, description: getDescription(types.transformation_file[index]) };
+		}),
+		input_transformation: types.input_transformation.map((name, index) => {
+			return { name, description: getDescription(types.input_transformation_file[index]) };
+		}),
 	};
 	response.addHTML(await renderTemplate('transformation_overview', { mime_types: mimeTypes, transformations }, await context.templateState()));
 	return response.response();

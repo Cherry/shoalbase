@@ -36,8 +36,6 @@ export function userFormFields(): Set<string> {
 	return fields;
 }
 
-const isList = (value: object): boolean => Array.isArray(value);
-
 // An empty PHP array is a list, so json_encode() writes [] for an empty settings map.
 const asPhpArray = (configData: Record<string, unknown>): unknown => (Object.keys(configData).length === 0 ? [] : configData);
 
@@ -70,7 +68,7 @@ export function varExport(value: unknown, level = 1): string {
 		text += `\n${' '.repeat(level - 1)}`;
 	}
 	text += 'array (\n';
-	const entries = isList(value) ? (value as unknown[]).map((item, index): [string, unknown] => [String(index), item]) : Object.entries(value);
+	const entries = Array.isArray(value) ? value.map((item: unknown, index): [string, unknown] => [String(index), item]) : Object.entries(value);
 	for (const [key, item] of entries) {
 		const exportedKey = /^(?:0|-?[1-9]\d*)$/.test(key) ? key : varExport(key);
 		text += `${' '.repeat(level + 1)}${exportedKey} => ${varExport(item, level + 2)},\n`;
@@ -143,7 +141,12 @@ export function importConfiguration(cf: UserConfigFile, configuration: Record<st
 		}
 		return { ok: true, errors: [] };
 	}
-	return { ok: false, errors: pages.map((page) => { return { forms: page.forms, errors: errorsOf(page) }; }) };
+	return {
+		ok: false,
+		errors: pages.map((page) => {
+			return { forms: page.forms, errors: errorsOf(page) };
+		}),
+	};
 }
 
 /** Util::splitURLQuery() and parse_url() of the import's return_url: its path and raw (still encoded) query values, without the token. */

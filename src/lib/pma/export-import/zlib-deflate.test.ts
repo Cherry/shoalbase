@@ -55,13 +55,15 @@ function fibonacciLiterals(): Uint8Array {
 			value = rare.at(-1) ?? 0;
 		}
 		const trigram = ((bytes[index - 2] ?? 0) << 16) | ((bytes[index - 1] ?? 0) << 8) | value;
-		if (!seen.has(trigram)) {
-			if (useRare) {
-				rare.pop();
-			}
-			seen.add(trigram);
-			bytes.push(value);
+		if (seen.has(trigram)) {
+			continue;
 		}
+
+		if (useRare) {
+			rare.pop();
+		}
+		seen.add(trigram);
+		bytes.push(value);
 	}
 	return Uint8Array.from(bytes);
 }

@@ -52,6 +52,11 @@ describe('PHP string comparisons', () => {
 		expect(strnatcmp('a05x', 'a051')).toBe(-1);
 	});
 
+	it('lets the first differing digit decide between equally long runs', () => {
+		expect(strnatcmp('v21', 'v19')).toBe(1);
+		expect(strnatcmp('v129', 'v131')).toBe(-1);
+	});
+
 	it('treats trailing whitespace as the end of the string', () => {
 		expect(strnatcmp('a  ', 'a  b')).toBe(-1);
 	});

@@ -42,5 +42,7 @@ export function activeThemeId(cookieTheme: string | undefined, themeDefault: str
 
 /** ThemeManager::getThemesArray(). */
 export function themesArray(activeId: string): { id: string; name: string; version: string; is_active: boolean; }[] {
-	return installedThemes.map((theme) => { return { ...theme, is_active: theme.id === activeId }; });
+	return installedThemes.map((theme) => {
+		return { ...theme, is_active: theme.id === activeId };
+	});
 }

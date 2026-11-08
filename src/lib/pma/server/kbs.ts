@@ -8,8 +8,8 @@ interface KbEntry {
 	u: number;
 	/** Documentation flavour: 1 MySQL, 2 MariaDB, 3 Aurora MySQL. */
 	t: number;
-	/** Anchor. */
-	a: string;
+	/** Anchor, null for some Aurora entries. */
+	a: string | null;
 }
 
 interface KbVariable {
@@ -21,7 +21,7 @@ const MYSQL = 1;
 const MARIADB = 2;
 const AURORA_MYSQL = 3;
 
-const kbs = data as unknown as { urls: string[]; varTypes: Record<string, string>; vars: Record<string, KbVariable>; };
+const kbs: { urls: string[]; varTypes: Record<string, string>; vars: Record<string, KbVariable>; } = data;
 
 function variable(name: string): KbVariable | undefined {
 	if (!Object.hasOwn(kbs.vars, name)) {

@@ -14,7 +14,9 @@ export function connect(address: SocketAddress) {
 	return {
 		readable: readable as ReadableStream<Uint8Array>,
 		writable: writable as WritableStream<Uint8Array>,
-		opened: once(socket, 'connect').then(() => { return {}; }),
+		opened: once(socket, 'connect').then(() => {
+			return {};
+		}),
 		closed: once(socket, 'close').then(() => {}),
 		close: async () => {
 			socket.destroy();

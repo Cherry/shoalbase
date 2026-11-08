@@ -229,7 +229,7 @@ async function replace(context: ControllerContext): Promise<Response> {
 	const insertRows = phpScalar(post.insert_rows);
 	if (insertRows !== undefined && /^[\t\n\v\f\r ]*[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?[\t\n\v\f\r ]*$/i.test(insertRows) && Number(insertRows) !== Number(config.InsertRows)) {
 		response.addScriptFiles(['vendor/jquery/additional-methods.js', 'table/change.js']);
-		(config as unknown as Record<string, unknown>).InsertRows = insertRows;
+		(config as Record<string, unknown>).InsertRows = insertRows;
 		return renderChangeForm(context, null, { post });
 	}
 
@@ -350,26 +350,28 @@ async function replace(context: ControllerContext): Promise<Response> {
 				valueSql = getCurrentValueForFunction({ func, salt: phpScalar(salts?.[key]), value: currentValue, version, passwordHash, uuid });
 			}
 
-			if (virtual === null || virtual[key] === undefined) {
-				const queryValue = getQueryValue({
-					columnName,
-					isInsert,
-					valueSql,
-					value: currentValue,
-					// An array (SET) value never equals the previous text.
-					previous: typeof posted === 'string' ? phpScalar(previous?.[key]) : undefined,
-					func,
-					isNull,
-					nullIsSet,
-					wasNull,
-					isFirstRow: valueSets.length === 0,
-				});
-				if (queryValue.value !== null) {
-					queryValues.push(queryValue.value);
-					if (queryValue.addField) {
-						queryFields.push(backquote(columnName));
-					}
-				}
+			if (virtual !== null && virtual[key] !== undefined) {
+				continue;
+			}
+			const queryValue = getQueryValue({
+				columnName,
+				isInsert,
+				valueSql,
+				value: currentValue,
+				// An array (SET) value never equals the previous text.
+				previous: typeof posted === 'string' ? phpScalar(previous?.[key]) : undefined,
+				func,
+				isNull,
+				nullIsSet,
+				wasNull,
+				isFirstRow: valueSets.length === 0,
+			});
+			if (queryValue.value === null) {
+				continue;
+			}
+			queryValues.push(queryValue.value);
+			if (queryValue.addField) {
+				queryFields.push(backquote(columnName));
 			}
 		}
 

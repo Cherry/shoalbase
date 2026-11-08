@@ -31,7 +31,9 @@ function fakeConnection(answers: Record<string, Answer>): { connection: Connecti
 			return [{ affectedRows: answer.affectedRows, warningStatus: 0 }, undefined];
 		}
 		const rows = answer.rows.map(row => row.map(value => (typeof value === 'string' ? Buffer.from(value) : value)));
-		const fields = answer.fields.map((item) => { return { orgName: item.name, table: 't', orgTable: 't', decimals: 0, columnLength: 10, flags: 0, ...item }; });
+		const fields = answer.fields.map((item) => {
+			return { orgName: item.name, table: 't', orgTable: 't', decimals: 0, columnLength: 10, flags: 0, ...item };
+		});
 		return [rows, fields];
 	};
 	return { connection: { query } as unknown as Connection, sent };

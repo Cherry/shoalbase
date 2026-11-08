@@ -84,7 +84,7 @@ export async function renderChangeForm(context: ControllerContext, whereClause: 
 	const state = await determineInsertOrEdit(context, post, get, initialWhereValue, db, table);
 	// A rejected Edit settings form leaves FormDisplay::save()'s boolean casts in $_POST, which determineInsertOrEdit() copied.
 	if (phpScalar(post.submit_save) === 'Edit') {
-		const editConfigValues = config as unknown as Record<string, unknown>;
+		const editConfigValues: Record<string, unknown> = config;
 		for (const key of ['ShowFunctionFields', 'ShowFieldTypesInDataEditView']) {
 			editConfigValues[key] = castPostedBoolean(post[key]);
 		}

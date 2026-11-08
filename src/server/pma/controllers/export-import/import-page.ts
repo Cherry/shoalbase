@@ -57,7 +57,7 @@ async function isForeignKeyCheckEnabled(context: PmaContext): Promise<boolean> {
 
 /** ImportLdi::setLdiLocalOptionConfig(): 'auto' becomes whether the server allows LOCAL INFILE. */
 async function resolveLdiLocalOption(context: PmaContext): Promise<void> {
-	const importConfig = context.config.Import as unknown as Record<string, unknown>;
+	const importConfig: Record<string, unknown> = context.config.Import;
 	if (importConfig.ldi_local_option !== 'auto') {
 		return;
 	}

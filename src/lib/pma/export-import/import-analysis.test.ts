@@ -106,6 +106,11 @@ describe('analyzeTable', () => {
 		};
 		expect(analyzeTable(table)).toEqual({ types: [VARCHAR, VARCHAR, VARCHAR, VARCHAR, DECIMAL], sizes: [2, 2, 4, '10', '10,1'] });
 	});
+
+	it('never narrows a text or decimal column back when decimals or big integers follow', () => {
+		const table = { name: 't', columns: ['a', 'b', 'c'], rows: [['x', 'x', '1.5'], ['12.75', '9999999999', '9999999999']] };
+		expect(analyzeTable(table).types).toEqual([VARCHAR, VARCHAR, DECIMAL]);
+	});
 });
 
 describe('spreadsheet column names', () => {
@@ -170,6 +175,6 @@ describe('generated SQL', () => {
 	it('quotes non-numeric cells without an analysis and skips tables without rows', () => {
 		expect(insertSql('db', { ...table, rows: [['1', 'x', '2.5']] }, null, backquote, escape)).toBe('INSERT INTO `db`.`tbl` (`a`, `b`, `g`) VALUES (1, \'x\', 2.5);');
 		expect(insertSql('db', { ...table, rows: [] }, null, backquote, escape)).toBeNull();
-		expect(insertSql('db', { ...table, rows: [['1']] }, null, backquote, escape)).toBe('INSERT INTO `db`.`tbl` (`a`, `b`, `g`) VALUES (1, \u{27}\u{27}, \u{27}\u{27});');
+		expect(insertSql('db', { ...table, rows: [['1']] }, null, backquote, escape)).toBe('INSERT INTO `db`.`tbl` (`a`, `b`, `g`) VALUES (1, \'\', \'\');');
 	});
 });

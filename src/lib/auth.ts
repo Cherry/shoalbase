@@ -17,9 +17,13 @@ export type EntryPoint = 'index' | 'public';
 
 /** The docroot's PHP scripts, with '/' serving index.php as Apache's DirectoryIndex does; any other path is a 404. */
 export const entryPoint = (pathname: string): EntryPoint | null => {
-	if (pathname === '/' || pathname === '/index.php') { return 'index'; }
+	if (pathname === '/' || pathname === '/index.php') {
+		return 'index';
+	}
 	// url.php runs with $isMinimumCommon and the login form loads js/messages.php, so neither needs a login.
-	if (pathname === '/url.php' || pathname === '/js/messages.php') { return 'public'; }
+	if (pathname === '/url.php' || pathname === '/js/messages.php') {
+		return 'public';
+	}
 	return null;
 };
 
@@ -66,7 +70,9 @@ const cipherFromKey = (key: CryptoKey): CookieCipher => {
 			return encodeBase64Url(token);
 		},
 		async open(context, token) {
-			if (!token) { return null; }
+			if (!token) {
+				return null;
+			}
 			try {
 				const bytes = decodeBase64Url(token);
 				const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes.slice(0, IV_LENGTH), additionalData: new TextEncoder().encode(context) }, key, bytes.slice(IV_LENGTH));
@@ -97,13 +103,17 @@ export const createCookieCipher = async (secret: string | undefined): Promise<Co
 
 /** Encrypts cookies with a session's encryption_key; null for anything createEncryptionKey() could not have made. */
 export const createSessionCipher = async (encryptionKey: unknown): Promise<CookieCipher | null> => {
-	if (typeof encryptionKey !== 'string' || !/^[\w-]{43}$/.test(encryptionKey)) { return null; }
+	if (typeof encryptionKey !== 'string' || !/^[\w-]{43}$/.test(encryptionKey)) {
+		return null;
+	}
 	return cipherFromKey(await crypto.subtle.importKey('raw', decodeBase64Url(encryptionKey), 'AES-GCM', false, ['encrypt', 'decrypt']));
 };
 
 /** Compares tokens in constant time so response timing cannot reveal how much of a guess matched. */
 export const tokensMatch = (expected: string, supplied: unknown): boolean => {
-	if (typeof supplied !== 'string' || supplied.length !== expected.length) { return false; }
+	if (typeof supplied !== 'string' || supplied.length !== expected.length) {
+		return false;
+	}
 	let difference = 0;
 	for (let index = 0; index < expected.length; index += 1) {
 		difference |= (expected.codePointAt(index) as number) ^ (supplied.codePointAt(index) as number);

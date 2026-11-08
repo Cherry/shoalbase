@@ -79,7 +79,9 @@ async function mainVariables(context: PmaContext, totalRows: number, pos: number
 		return {
 			name: charset.getName(),
 			description: charset.getDescription(),
-			collations: [...(collations.get(charset.getName())?.values() ?? [])].map((collation) => { return { name: collation.getName(), description: collation.getDescription() }; }),
+			collations: [...(collations.get(charset.getName())?.values() ?? [])].map((collation) => {
+				return { name: collation.getName(), description: collation.getDescription() };
+			}),
 		};
 	}).toArray();
 	return {

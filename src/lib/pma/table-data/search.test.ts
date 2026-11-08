@@ -28,6 +28,7 @@ describe('getWhereClause', () => {
 		expect(getWhereClause('1,5', 'c', 'int', 'BETWEEN', undefined, version)).toBe('`c` BETWEEN 1 AND 5');
 		expect(getWhereClause('1', 'c', 'int', 'NOT BETWEEN', undefined, version)).toBe('`c` NOT BETWEEN 1 AND ');
 		expect(getWhereClause(nestedParams({ v: ['1', '2'] }).v, 'c', 'int', 'IN (...)', undefined, version)).toBe('`c` IN (1,2)');
+		expect(getWhereClause(nestedParams({ v: [''] }).v, 'c', 'int', 'IN (...)', undefined, version)).toBe('`c` IS NULL');
 		expect(getWhereClause(nestedParams({ v: ['x'] }).v, 'c', 'int', 'LIKE %...%', undefined, version)).toBe('`c` LIKE \'%Array%\'');
 	});
 

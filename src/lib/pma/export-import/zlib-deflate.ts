@@ -264,15 +264,17 @@ class Deflater {
 				// Scanning only.
 			}
 			const length = MAX_MATCH - (strend - scan);
-			if (length > bestLength) {
-				this.matchStart = curMatch;
-				bestLength = length;
-				if (length >= niceMatch) {
-					break;
-				}
-				scanEnd1 = window[this.strstart + bestLength - 1];
-				scanEnd = window[this.strstart + bestLength];
+			if (length <= bestLength) {
+				continue;
 			}
+
+			this.matchStart = curMatch;
+			bestLength = length;
+			if (length >= niceMatch) {
+				break;
+			}
+			scanEnd1 = window[this.strstart + bestLength - 1];
+			scanEnd = window[this.strstart + bestLength];
 		} while ((curMatch = this.prev[curMatch & WMASK]) > limit && --chainLength !== 0);
 		return Math.min(bestLength, this.lookahead);
 	}
@@ -383,14 +385,15 @@ class Deflater {
 				overflow++;
 			}
 			tree[node * 2 + 1] = bits;
-			if (node <= maxCode) {
-				this.blCount[bits]++;
-				const extraBits = node >= stat.base ? stat.extra[node - stat.base] : 0;
-				const frequency = tree[node * 2];
-				this.optLength += frequency * (bits + extraBits);
-				if (stat.tree) {
-					this.staticLength += frequency * (stat.tree[node * 2 + 1] + extraBits);
-				}
+			if (node > maxCode) {
+				continue;
+			}
+			this.blCount[bits]++;
+			const extraBits = node >= stat.base ? stat.extra[node - stat.base] : 0;
+			const frequency = tree[node * 2];
+			this.optLength += frequency * (bits + extraBits);
+			if (stat.tree) {
+				this.staticLength += frequency * (stat.tree[node * 2 + 1] + extraBits);
 			}
 		}
 		if (overflow === 0) {
@@ -410,13 +413,15 @@ class Deflater {
 			let count = this.blCount[bits];
 			while (count !== 0) {
 				const node = this.heap[--index];
-				if (node <= maxCode) {
-					if (tree[node * 2 + 1] !== bits) {
-						this.optLength += (bits - tree[node * 2 + 1]) * tree[node * 2];
-						tree[node * 2 + 1] = bits;
-					}
-					count--;
+				if (node > maxCode) {
+					continue;
 				}
+
+				if (tree[node * 2 + 1] !== bits) {
+					this.optLength += (bits - tree[node * 2 + 1]) * tree[node * 2];
+					tree[node * 2 + 1] = bits;
+				}
+				count--;
 			}
 		}
 	}
@@ -446,6 +451,8 @@ class Deflater {
 			tree[node * 2] = 1;
 			this.depth[node] = 0;
 			this.optLength--;
+			// Only the bit-length tree has no static tree, and its codes always include two used ones, so this padding never runs for it.
+			/* v8 ignore else -- @preserve */
 			if (stat.tree) {
 				this.staticLength -= stat.tree[node * 2 + 1];
 			}

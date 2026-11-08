@@ -69,7 +69,7 @@ export interface PmaContextInput {
 
 /** Config::loadUserPreferences(): merges the session preferences, then remembers a theme picked through the theme cookie. */
 function loadPreferences(config: PmaConfig, session: PmaSession, themeCookie: string | undefined, setTheme: unknown): string {
-	const cfg = config as unknown as Record<string, unknown>;
+	const cfg: Record<string, unknown> = config;
 	applySessionPreferences(session, cfg);
 	const theme = activeThemeId(themeCookie, config.ThemeDefault);
 	if ((themeCookie !== undefined && themeCookie !== '' && themeCookie !== '0') || setTheme !== undefined) {
@@ -133,7 +133,7 @@ export function createPmaContext(input: PmaContextInput): PmaContext {
 			await dbi.connect();
 			return {
 				url: urlState(),
-				config: config as unknown as Record<string, unknown>,
+				config: config as Record<string, unknown>,
 				mysqlVersion: dbi.getVersion(),
 				serverType: dbi.isMariaDB() ? 'MariaDB' : (dbi.isPercona() ? 'Percona Server' : 'MySQL'),
 				themeImgPath: `./themes/${theme}/img/`,

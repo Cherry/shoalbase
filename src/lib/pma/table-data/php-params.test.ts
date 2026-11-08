@@ -40,6 +40,11 @@ describe('nestedParams', () => {
 		expect(phpGet(params, 'b', 'k')).toBe('z');
 	});
 
+	it('numbers [] from 0 past string keys', () => {
+		const params = nestedParams({ 'a[name]': 'x', 'a': ['y', 'z'] });
+		expect(phpEntries(params.a as PhpArray)).toEqual([['name', 'x'], ['0', 'y'], ['1', 'z']]);
+	});
+
 	it('lists keys added in code after the posted ones and skips deleted ones', () => {
 		const array = nestedParams({ 'x[b]': '1', 'x[a]': '2' }).x as Record<string, string>;
 		array.c = '3';

@@ -60,7 +60,9 @@ function decodeJson<T>(value: unknown, fallback: T): T {
 async function columnDefinitions(context: PmaContext, db: string, table: string): Promise<ColumnDefinition[]> {
 	await context.dbi.selectDb(db);
 	const columns = await context.dbi.getColumns(db, table, true);
-	return columns.entries().map(([name, definition]) => { return { name, type: String(definition.Type ?? '') }; }).toArray();
+	return columns.entries().map(([name, definition]) => {
+		return { name, type: String(definition.Type ?? '') };
+	}).toArray();
 }
 
 /** Types::getColumns()['String'], the string-like column types. */
@@ -85,7 +87,9 @@ function charsetList(charsets: Map<string, Charset>, collations: Map<string, Map
 		return {
 			name: charset.getName(),
 			description: charset.getDescription(),
-			collations: list.map((collation) => { return { name: collation.getName(), description: collation.getDescription() }; }).toArray(),
+			collations: list.map((collation) => {
+				return { name: collation.getName(), description: collation.getDescription() };
+			}).toArray(),
 		};
 	}).toArray();
 }

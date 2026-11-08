@@ -103,7 +103,11 @@ function normalizeRoute(route) {
 	return `/${path}`;
 }
 
-/** The route (first word without "=") and the key=value pairs after it. */
+/**
+ * The route (first word without "=") and the key=value pairs after it.
+ * @param {string[]} rest
+ * @returns {{ route: string, params: [string, string][] }}
+ */
 function routeAndParams(rest) {
 	const words = [...rest];
 	let route = '/';

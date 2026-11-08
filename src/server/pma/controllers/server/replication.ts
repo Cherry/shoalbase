@@ -31,7 +31,9 @@ interface PageState {
 	urlParams: Record<string, unknown>;
 }
 
-const flavourOf = (context: PmaContext) => { return { isMariaDB: context.dbi.isMariaDB(), version: context.dbi.getVersion() }; };
+const flavourOf = (context: PmaContext) => {
+	return { isMariaDB: context.dbi.isMariaDB(), version: context.dbi.getVersion() };
+};
 
 /** ReplicationInfo::load($_POST['primary_connection'] ?? null), including its $urlParams side effect. */
 async function loadInfo(context: PmaContext, state?: PageState): Promise<ReplicationInfo> {

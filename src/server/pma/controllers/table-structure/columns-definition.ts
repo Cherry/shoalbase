@@ -200,7 +200,9 @@ export async function columnsFormData(context: PmaContext, options: ColumnsFormO
 		return {
 			name: charset.getName(),
 			description: charset.getDescription(),
-			collations: (collations.get(charset.getName()) ?? new Map()).values().map((collation) => { return { name: collation.getName(), description: collation.getDescription() }; }).toArray(),
+			collations: (collations.get(charset.getName()) ?? new Map()).values().map((collation) => {
+				return { name: collation.getName(), description: collation.getDescription() };
+			}).toArray(),
 		};
 	}).toArray();
 	const server = serverKind(context);

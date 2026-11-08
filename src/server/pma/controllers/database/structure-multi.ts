@@ -262,7 +262,9 @@ export async function copyFormController(context: PmaContext): Promise<Response>
 	disableResponse(context);
 	context.response.addHTML(await render(context, 'database/structure/copy_form', {
 		url_params: selectedParams(context, selected),
-		options: databases.map((name) => { return { name, is_selected: false }; }),
+		options: databases.map((name) => {
+			return { name, is_selected: false };
+		}),
 	}));
 	return context.response.response();
 }

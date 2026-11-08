@@ -41,6 +41,7 @@ interface FormsData {
 	fields: Record<string, FieldInfo>;
 }
 
+// eslint-disable-next-line antislop/no-chained-type-assertions -- JSON imports infer string[] where the generated file holds [key, label] tuples and FieldType names.
 const data = formsData as unknown as FormsData;
 
 /** PageFormList: the forms behind each page's settings dialog (Browse, DbStructure, Edit, Export, Import, Navi, Sql, TableStructure). */

@@ -575,6 +575,7 @@ export class DatabaseInterface {
 	 */
 	async fetchResult<T = DbiRow>(sql: string, key?: null, value?: string | number | null): Promise<T[]>;
 	async fetchResult<T = DbiRow>(sql: string, key: string | number, value?: string | number | null): Promise<Map<string, T>>;
+	async fetchResult<T = DbiRow>(sql: string, key: [string, string], value?: string | number | null): Promise<Map<string, Map<string, T>>>;
 	async fetchResult<T = DbiRow>(sql: string, key: (string | number | null)[], value?: string | number | null): Promise<FetchResultTree<T>>;
 	async fetchResult(sql: string, key: string | number | (string | number | null)[] | null = null, value: string | number | null = null): Promise<unknown> {
 		const result = await this.tryQuery(sql, false);
@@ -834,7 +835,7 @@ export class DatabaseInterface {
 		if (count && !pagingApplied) {
 			sql += ` LIMIT ${count} OFFSET ${limitOffset}`;
 		}
-		const bySchema = await this.fetchResult(sql, ['TABLE_SCHEMA', 'TABLE_NAME']) as unknown as Map<string, Map<string, DbiRow>>;
+		const bySchema = await this.fetchResult(sql, ['TABLE_SCHEMA', 'TABLE_NAME']);
 		let tables = bySchema.get(database) ?? bySchema.get(database.toLowerCase()) ?? new Map<string, DbiRow>();
 		if (sortBy === 'Name' && this.options.config.NaturalOrder) {
 			tables = this.sortByKey(tables, sortOrder);
@@ -885,6 +886,7 @@ export class DatabaseInterface {
 	/** DatabaseInterface::getColumnsFull() with information_schema, keyed by column name for a single table. */
 	async getColumnsFull(database: string, table: string): Promise<Map<string, DbiRow>> {
 		const [sql, keys] = getInformationSchemaColumnsFullRequest(escapeString(database), escapeString(table), null);
+		// eslint-disable-next-line antislop/no-chained-type-assertions -- with the database and table fixed the request keys only by COLUMN_NAME, so the tree is one Map deep.
 		return await this.fetchResult(sql, keys) as unknown as Map<string, DbiRow>;
 	}
 

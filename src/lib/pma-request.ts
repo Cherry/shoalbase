@@ -20,7 +20,9 @@ export interface PmaRequest {
 export const paramsFrom = (entries: Iterable<[string, unknown]>): RequestParams => {
 	const params: RequestParams = {};
 	for (const [rawKey, rawValue] of entries) {
-		if (typeof rawValue !== 'string') { continue; }
+		if (typeof rawValue !== 'string') {
+			continue;
+		}
 		const isList = rawKey.endsWith('[]');
 		const key = isList ? rawKey.slice(0, -2) : rawKey;
 		const existing = params[key];
@@ -35,7 +37,9 @@ export const paramsFrom = (entries: Iterable<[string, unknown]>): RequestParams 
 
 export const scalarParam = (params: RequestParams, key: string): string | undefined => {
 	const value = params[key];
-	if (typeof value === 'string') { return value; }
+	if (typeof value === 'string') {
+		return value;
+	}
 	return undefined;
 };
 
@@ -48,7 +52,9 @@ export const currentRoute = (query: RequestParams, post: RequestParams): string 
 	const database = scalarParam(query, 'db') ?? '';
 	if (route === '/' && database !== '') {
 		const table = scalarParam(query, 'table') ?? '';
-		if (table === '') { return '/database/structure'; }
+		if (table === '') {
+			return '/database/structure';
+		}
 		return '/sql';
 	}
 	return route;

@@ -31,7 +31,9 @@ export const splitPackets = (buffer: Bytes): { packets: Bytes[]; rest: Bytes; } 
 	let offset = 0;
 	while (buffer.length - offset >= PACKET_HEADER) {
 		const length = (buffer[offset] as number) | ((buffer[offset + 1] as number) << 8) | ((buffer[offset + 2] as number) << 16);
-		if (buffer.length - offset < PACKET_HEADER + length) { break; }
+		if (buffer.length - offset < PACKET_HEADER + length) {
+			break;
+		}
 		packets.push(buffer.subarray(offset, offset + PACKET_HEADER + length));
 		offset += PACKET_HEADER + length;
 	}
@@ -47,12 +49,16 @@ export interface ServerGreeting {
 export const parseGreeting = (packet: Bytes): ServerGreeting | null => {
 	const payload = packet.subarray(PACKET_HEADER);
 	const versionEnd = payload.indexOf(0, 1);
-	if (payload[0] !== 10 || versionEnd === -1) { return null; }
+	if (payload[0] !== 10 || versionEnd === -1) {
+		return null;
+	}
 	const version = new TextDecoder().decode(payload.subarray(1, versionEnd));
 	// version NUL, thread id (4), scramble part 1 (8), filler, capabilities (2), charset, status (2), capabilities (2), auth length, reserved (10).
 	const partOne = versionEnd + 1 + 4;
 	const partTwo = partOne + 8 + 1 + 2 + 1 + 2 + 2 + 1 + 10;
-	if (payload.length < partTwo + 12) { return null; }
+	if (payload.length < partTwo + 12) {
+		return null;
+	}
 	const scramble = new Uint8Array(20);
 	scramble.set(payload.subarray(partOne, partOne + 8));
 	scramble.set(payload.subarray(partTwo, partTwo + 12), 8);
@@ -62,9 +68,13 @@ export const parseGreeting = (packet: Bytes): ServerGreeting | null => {
 /** An AuthSwitchRequest replaces the scramble the proof is computed with. */
 export const authSwitchScramble = (packet: Bytes): Bytes | null => {
 	const payload = packet.subarray(PACKET_HEADER);
-	if (payload[0] !== 0xFE || payload.length < 2) { return null; }
+	if (payload[0] !== 0xFE || payload.length < 2) {
+		return null;
+	}
 	const nameEnd = payload.indexOf(0, 1);
-	if (nameEnd === -1) { return null; }
+	if (nameEnd === -1) {
+		return null;
+	}
 	let data = payload.subarray(nameEnd + 1);
 	if (data.at(-1) === 0) {
 		data = data.subarray(0, -1);
@@ -81,7 +91,9 @@ export const okPacketProof = (packet: Bytes): string | null => {
 	const text = new TextDecoder('latin1').decode(packet.subarray(PACKET_HEADER));
 	for (let index = text.indexOf('\u{1}'); index !== -1; index = text.indexOf('\u{1}', index + 1)) {
 		const candidate = text.slice(index + 1, index + 65);
-		if (/^[\dA-F]{64}$/i.test(candidate)) { return candidate.toUpperCase(); }
+		if (/^[\dA-F]{64}$/i.test(candidate)) {
+			return candidate.toUpperCase();
+		}
 	}
 	return null;
 };

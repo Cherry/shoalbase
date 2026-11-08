@@ -61,7 +61,9 @@ export async function getHtmlList(context: PmaContext, type: TableListType): Pro
 		return renderTemplate('recent_favorite_table_no_tables', { is_recent: type === 'recent' }, state);
 	}
 	if (type === 'recent') {
-		return renderTemplate('recent_favorite_table_recent', { tables: tables.map(({ db, table }) => { return { db, table }; }) }, state);
+		return renderTemplate('recent_favorite_table_recent', { tables: tables.map(({ db, table }) => {
+			return { db, table };
+		}) }, state);
 	}
 	return renderTemplate('recent_favorite_table_favorite', {
 		tables: tables.map(({ db, table }) => {

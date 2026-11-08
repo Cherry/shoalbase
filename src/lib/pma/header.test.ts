@@ -51,7 +51,9 @@ const liveLoginScripts = [
 	['drag_drop_import.js', 1],
 	['shortcuts_handler.js', 1],
 	['console.js', 1],
-].map(([name, fire]) => { return { name, fire }; });
+].map(([name, fire]) => {
+	return { name, fire };
+});
 
 describe('page scripts', () => {
 	it('matches the script list and onload flags of the live login page', () => {

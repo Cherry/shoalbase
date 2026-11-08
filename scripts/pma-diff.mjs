@@ -20,7 +20,7 @@ const byText = (left, right) => (left < right ? -1 : Number(left > right));
 // Headers that only describe the transport or the moment of the request.
 const IGNORED_HEADERS = new Set(['date', 'server', 'connection', 'keep-alive', 'transfer-encoding', 'content-encoding', 'content-length', 'vary', 'x-ob_mode']);
 
-// PMA_RENDER_URL points at a warm render-route process (PMA_RENDER_SERVE), which skips vite-node's start-up on every diff.
+// PMA_RENDER_URL points at a warm render-route process (PMA_RENDER_SERVE), which skips Vite's start-up on every diff.
 async function renderStdout(argv) {
 	if (process.env.PMA_RENDER_URL) {
 		const response = await fetch(process.env.PMA_RENDER_URL, { method: 'POST', body: JSON.stringify(argv) });
@@ -30,8 +30,7 @@ async function renderStdout(argv) {
 		}
 		return text;
 	}
-	const viteNode = path.join(ROOT, 'node_modules', 'vite-node', 'vite-node.mjs');
-	const args = [viteNode, '--config', 'scripts/render-route.config.ts', 'scripts/render-route.ts', '--', ...argv];
+	const args = ['scripts/vite-run.ts', 'scripts/render-route.ts', ...argv];
 	const { stdout } = await promisify(execFile)(process.execPath, args, { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 });
 	return stdout;
 }

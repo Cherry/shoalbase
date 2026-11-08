@@ -8,7 +8,7 @@ describe('htmlentities', () => {
 	});
 
 	it('names Latin-1, Greek and symbol characters like PHP', () => {
-		expect(htmlentities('café ñ ÿ  ')).toBe('caf&eacute; &ntilde; &yuml; &nbsp;');
+		expect(htmlentities('café ñ ÿ \u{A0}')).toBe('caf&eacute; &ntilde; &yuml; &nbsp;');
 		expect(htmlentities('ΑΩαςσω')).toBe('&Alpha;&Omega;&alpha;&sigmaf;&sigma;&omega;');
 		expect(htmlentities('€—≤♦Œ')).toBe('&euro;&mdash;&le;&diams;&OElig;');
 	});

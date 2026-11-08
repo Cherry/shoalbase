@@ -1,11 +1,10 @@
 // Renders one route through our dispatcher in Node, signed in as the oracle's customer on the local MySQL 8.4.
-// Usage: npx vite-node --config scripts/render-route.config.ts scripts/render-route.ts -- [--server <n>] [--user <persona>] [--post] [--ajax] [--headers] [--signed-out] [--before "[POST] <route> [key=value ...]"]... <route> [key=value ...]
+// Usage: node scripts/vite-run.ts scripts/render-route.ts [--server <n>] [--user <persona>] [--post] [--ajax] [--headers] [--signed-out] [--before "[POST] <route> [key=value ...]"]... <route> [key=value ...]
 // --server n signs in as on oracle server n (see ORACLE_SERVERS in pma-oracle.mjs); TLS servers connect through the Worker connector.
 // --user signs in as one of PERSONAS in pma-oracle.mjs; it works per request in PMA_RENDER_SERVE mode too, since the argv is posted.
 // Env: PMA_RENDER_DB_HOST/PORT override the connection, and PMA_RENDER_DB_USER/PASSWORD the login when --user is not given (default customer/customerpw).
 import { createServer } from 'node:http';
 import process from 'node:process';
-
 
 import {
 	extraCookies,
@@ -15,6 +14,7 @@ import {
 	postBody,
 	requestParams,
 } from './pma-oracle.mjs';
+// The same module the cloudflare:workers alias resolves to, so this sees the dispatcher's waitUntil() calls.
 import { drainWaitUntil } from './stubs/cloudflare-workers.ts';
 
 import type { APIContext } from 'astro';
@@ -24,9 +24,6 @@ import { createRequestConnection } from '~/lib/connection';
 import { connectFromWorker, connectWithMysql2 } from '~/server/mysql-connector';
 import { dispatch } from '~/server/pma/dispatcher';
 import { createScriptSession, startScriptSession } from '~/server/session-runtime';
-
-// The same module the cloudflare:workers alias resolves to, so this sees the dispatcher's waitUntil() calls.
-
 
 // The oracle serves on this host, so page titles and absolute URLs come out the same.
 const ORIGIN = process.env.PMA_RENDER_ORIGIN ?? 'http://127.0.0.1:8088';
@@ -42,7 +39,16 @@ interface Options {
 	route: string;
 	params: [string, string][];
 	/** Earlier requests of the same login, run first so their session state carries over. */
-	before: Options[];
+	before: Step[];
+}
+
+/** What renderOne() reads of a request; a --before step from parseStep() runs on the main request's server and login. */
+interface Step {
+	method: string;
+	ajax: boolean;
+	signedOut: boolean;
+	route: string;
+	params: [string, string][];
 }
 
 // Git Bash rewrites "/route" arguments into Windows paths, so that is undone here as in pma-oracle.mjs.
@@ -61,7 +67,7 @@ function parseArgs(argv: string[]): Options {
 	for (let index = 0; index < argv.length; index++) {
 		const arg = argv[index];
 		if (arg === '--before') {
-			options.before.push(parseStep(argv[++index] ?? '') as unknown as Options);
+			options.before.push(parseStep(argv[++index] ?? ''));
 		} else if (arg === '--server') {
 			options.server = argv[++index] ?? '';
 			oracleServer(options.server);
@@ -168,7 +174,7 @@ function loginFor(options: Options): Login {
 	return { user: process.env.PMA_RENDER_DB_USER ?? 'customer', password: process.env.PMA_RENDER_DB_PASSWORD ?? 'customerpw' };
 }
 
-async function renderOne(options: Options, server: string, sessionId: string, cookies: ScriptCookies, login: Login): Promise<Response> {
+async function renderOne(options: Step, server: string, sessionId: string, cookies: ScriptCookies, login: Login): Promise<Response> {
 	// As the middleware does: a signed-in request loads the session, and a signed-out one gets a fresh session id.
 	const locals = {} as App.Locals;
 	let token = '';
@@ -201,6 +207,7 @@ async function renderOne(options: Options, server: string, sessionId: string, co
 	if (!options.signedOut) {
 		locals.auth = { user: login.user, host: target.host, server: `${target.host}:3306`, serverIndex: Number(server), token };
 	}
+	// eslint-disable-next-line antislop/no-chained-type-assertions -- a script-side stand-in with only the parts of APIContext the dispatcher reads.
 	const astro = {
 		request: new Request(url, init),
 		url,

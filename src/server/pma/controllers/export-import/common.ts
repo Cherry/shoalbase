@@ -26,7 +26,7 @@ export function optionRequest(context: PmaContext, section: 'Export' | 'Import',
 		get: context.request.query,
 		request: context.request.params,
 		timeoutPassed,
-		section: context.config[section] as unknown as Record<string, unknown>,
+		section: context.config[section],
 	};
 }
 

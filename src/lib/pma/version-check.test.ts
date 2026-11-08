@@ -64,6 +64,11 @@ describe('versionCompare', () => {
 		expect(versionCompare(left, right, 'ne')).toBe(result !== 0);
 	});
 
+	it('folds a separator that follows a dot into that dot, as php_canonicalize_version() does', () => {
+		expect(versionCompare('1.-2', '1.2', '==')).toBe(true);
+		expect(versionCompare('5.2._3', '5.2.3', '==')).toBe(true);
+	});
+
 	it('rejects unknown operators', () => {
 		expect(versionCompare('1', '1', '~')).toBe(false);
 	});

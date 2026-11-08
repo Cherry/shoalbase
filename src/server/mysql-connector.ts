@@ -82,12 +82,16 @@ class WorkerSocketStream extends Duplex {
 				this.captureGreeting(value);
 			}
 			this.push(Buffer.from(value));
-			if (this.awaitingTls) {
-				// Stop reading once mysql2 has asked for TLS, so no plaintext read is left pending under the handshake.
-				await new Promise((resolve) => {
-					setTimeout(resolve, 0);
-				});
-				if (this.upgradeRequested) { return; }
+			if (!this.awaitingTls) {
+				continue;
+			}
+
+			// Stop reading once mysql2 has asked for TLS, so no plaintext read is left pending under the handshake.
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+			if (this.upgradeRequested) {
+				return;
 			}
 		}
 	}
@@ -129,7 +133,9 @@ class WorkerSocketStream extends Duplex {
 			if (isOkPacket(packet)) {
 				const proof = okPacketProof(packet);
 				const expected = await expectedMariaDbProof(this.settings.password, screen.scramble, screen.certificate);
-				if (proof !== expected) { throw identityError('The MariaDB server could not prove its TLS certificate for this account.'); }
+				if (proof !== expected) {
+					throw identityError('The MariaDB server could not prove its TLS certificate for this account.');
+				}
 			}
 			screen.scramble = authSwitchScramble(packet) ?? screen.scramble;
 			this.push(Buffer.from(packet));
@@ -147,7 +153,9 @@ class WorkerSocketStream extends Duplex {
 
 	private async verifyPeer(peer: TlsPeer): Promise<void> {
 		if (this.settings.pin) {
-			if (await spkiPin(peer.spki) !== this.settings.pin) { throw identityError('The server TLS certificate does not match the pinned key for this server.'); }
+			if (await spkiPin(peer.spki) !== this.settings.pin) {
+				throw identityError('The server TLS certificate does not match the pinned key for this server.');
+			}
 			return;
 		}
 		if (this.greeting?.isMariaDb) {
@@ -214,6 +222,7 @@ export const connectFromWorker: MysqlConnector = (settings: ConnectionSettings) 
 		disableEval: true,
 		flags: MYSQLI_FLAGS,
 	});
+	// eslint-disable-next-line antislop/no-chained-type-assertions -- mysql2's typings omit the internal startTLS() that is replaced here to upgrade the Worker socket.
 	(connection as unknown as { startTLS: (onSecure: TlsCallback) => void; }).startTLS = async (onSecure) => {
 		try {
 			await stream.upgradeToTls();

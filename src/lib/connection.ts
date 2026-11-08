@@ -29,7 +29,9 @@ export const createRequestConnection = (settings: ConnectionSettings, connector:
 		async close() {
 			const opening = pending;
 			pending = undefined;
-			if (!opening) { return; }
+			if (!opening) {
+				return;
+			}
 			try {
 				const connection = await opening;
 				await connection.end();

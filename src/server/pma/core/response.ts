@@ -78,7 +78,7 @@ export class ResponseRenderer {
 	}
 
 	private generatorState() {
-		return toGeneratorState(createTemplateState({ config: this.context.config as unknown as Record<string, unknown> }));
+		return toGeneratorState(createTemplateState({ config: this.context.config }));
 	}
 
 	/** Header::getJsParams() for the given db and table. */
@@ -277,7 +277,7 @@ export class ResponseRenderer {
 			return this.title;
 		}
 		const { config, server, db, table, httpHost } = this.context;
-		const { TitleTable, TitleDatabase, TitleServer, TitleDefault } = config as unknown as Record<string, string>;
+		const { TitleTable, TitleDatabase, TitleServer, TitleDefault } = config;
 		const titles = { TitleTable, TitleDatabase, TitleServer, TitleDefault };
 		return pageTitle({ httpHost, server, serverHost: config.Server.host, serverVerbose: config.Server.verbose, db, table, titles });
 	}

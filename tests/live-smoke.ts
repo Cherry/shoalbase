@@ -108,7 +108,9 @@ check(token !== '', 'the home page must embed the session token');
 
 let crawled = 0;
 for (const route of upstreamRoutes) {
-	if (!route.methods.includes('GET') || skipped.has(route.path)) { continue; }
+	if (!route.methods.includes('GET') || skipped.has(route.path)) {
+		continue;
+	}
 	const path = route.path
 		.replace(/^\[\/\]$/, '/')
 		.replaceAll(/\[([^\]]+)\]/g, '$1')

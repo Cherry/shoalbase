@@ -128,7 +128,9 @@ const readBytes = async (connection: TlsConnection, length: number): Promise<Byt
 	let received = new Uint8Array(0);
 	while (received.length < length) {
 		const chunk = await connection.read();
-		if (!chunk) { break; }
+		if (!chunk) {
+			break;
+		}
 		received = join(received, chunk);
 	}
 	return received;
@@ -294,7 +296,9 @@ describe('TLS handshakes against OpenSSL', () => {
 describe('TLS handshake failures', () => {
 	it('aborts when the caller does not trust the server key', async () => {
 		const { port } = echoServer({});
-		await expect(connectTo(await port, async () => { throw new Error('pin mismatch'); })).rejects.toThrow('pin mismatch');
+		await expect(connectTo(await port, async () => {
+			throw new Error('pin mismatch');
+		})).rejects.toThrow('pin mismatch');
 	});
 
 	it('reports the server alert when no cipher suite is shared', async () => {
@@ -354,7 +358,10 @@ describe('TLS handshake failures', () => {
 	});
 
 	it('still reports the original error when the alert cannot be sent', async () => {
-		const transport: TlsTransport = { read: async () => null, write: async () => { throw new Error('socket closed'); } };
+		const transport: TlsTransport = { read: async () => null,
+			write: async () => {
+				throw new Error('socket closed');
+			} };
 		await expect(connectTls(transport, { verifyPeer: async () => {} })).rejects.toThrow('socket closed');
 		const closedTransport: TlsTransport = { read: async () => null, write: async () => {} };
 		await expect(connectTls(closedTransport, { serverName: '10.0.0.1', verifyPeer: async () => {} })).rejects.toThrow('closed the connection during the TLS handshake');
@@ -434,7 +441,12 @@ describe('established sessions', () => {
 		});
 		// Count the server's application-key records (session tickets) by trial decryption, so forged records continue its sequence.
 		let applicationRecords = 0;
-		const proxy = await recordProxy(await port, passThrough, (serverRecord) => {
+		let clientRecords = 0;
+		const countClientRecord = (clientRecord: Bytes): Bytes => {
+			clientRecords += 1;
+			return clientRecord;
+		};
+		const proxy = await recordProxy(await port, countClientRecord, (serverRecord) => {
 			if (serverRecord[0] === 23 && trafficSecret.length > 0) {
 				const nonce = expandLabel13(trafficSecret, 'iv', 12).map((byte, position) => byte ^ (position >= 4 ? (sequence(applicationRecords)[position - 4] as number) : 0));
 				const decipher = createDecipheriv('aes-128-gcm', expandLabel13(trafficSecret, 'key', 16), nonce);
@@ -465,11 +477,16 @@ describe('established sessions', () => {
 		});
 		const ticketRecords = applicationRecords;
 		expect(ticketRecords).toBeGreaterThan(0);
-		const updated = expandLabel13(trafficSecret, 'traffic upd', 32);
+		const quiet = expandLabel13(trafficSecret, 'traffic upd', 32);
+		const updated = expandLabel13(quiet, 'traffic upd', 32);
+		const recordsBefore = clientRecords;
 		proxy.inject(join(
-			forge(trafficSecret, ticketRecords, 22, handshake(24, bytes(1))),
+			forge(trafficSecret, ticketRecords, 22, handshake(24, bytes(0))),
+			forge(quiet, 0, 23, text('quiet update')),
+			forge(quiet, 1, 22, handshake(24, bytes(1))),
 			forge(updated, 0, 23, text('fresh keys')),
 		));
+		expect(await connection.read()).toEqual(text('quiet update'));
 		expect(await connection.read()).toEqual(text('fresh keys'));
 		// The client answered with its own KeyUpdate; OpenSSL only decrypts this if the client switched keys correctly.
 		await connection.write(text('after update'));
@@ -477,7 +494,30 @@ describe('established sessions', () => {
 			setTimeout(resolve, 200);
 		});
 		expect(Buffer.concat(received).toString()).toContain('after update');
+		// Only the requested update gets a KeyUpdate back, so the client sent that one and the data record.
+		expect(clientRecords - recordsBefore).toBe(2);
 	}, 10000);
+
+	it('closes quietly when the close_notify alert cannot be written', async () => {
+		const { port } = echoServer({ minVersion: 'TLSv1.3' });
+		const socket = net.connect(await port, '127.0.0.1');
+		cleanups.push(() => socket.destroy());
+		await once(socket, 'connect');
+		const transport = socketTransport(socket);
+		let broken = false;
+		const connection = await connectTls({
+			read: transport.read,
+			write: async (data) => {
+				if (broken) {
+					throw new Error('socket closed');
+				}
+				await transport.write(data);
+			},
+		}, { serverName: 'localhost', verifyPeer: async () => {} });
+		broken = true;
+		await expect(connection.close()).resolves.toBeUndefined();
+		expect(await connection.read()).toBeNull();
+	});
 });
 
 describe('malformed server handshakes', () => {
@@ -494,11 +534,20 @@ describe('malformed server handshakes', () => {
 				const sessionLength = chunk[43] as number;
 				socket.write(await respond({ random: new Uint8Array(chunk.subarray(11, 43)), sessionId: new Uint8Array(chunk.subarray(44, 44 + sessionLength)) }));
 				if (waitForReply) {
-					// The client's reply spans several writes; close once it goes quiet so none of them fail.
-					let timer: ReturnType<typeof setTimeout> | undefined;
-					socket.on('data', () => {
-						clearTimeout(timer);
-						timer = setTimeout(() => socket.end(), 50);
+					// The client's reply spans several writes; close only after its Finished, the record after ChangeCipherSpec, so none of them fail under load.
+					let received = new Uint8Array(0);
+					let sawChangeCipherSpec = false;
+					socket.on('data', (data) => {
+						received = join(received, data);
+						while (received.length >= 5 && received.length >= 5 + ((received[3] as number) << 8 | (received[4] as number))) {
+							const type = received[0];
+							received = received.slice(5 + ((received[3] as number) << 8 | (received[4] as number)));
+							if (sawChangeCipherSpec) {
+								socket.end();
+								return;
+							}
+							sawChangeCipherSpec = type === 20;
+						}
 					});
 				} else {
 					socket.end();

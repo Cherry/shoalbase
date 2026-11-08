@@ -13,6 +13,8 @@ import { md5 } from '../md5.ts';
 import { convertBitDefaultValue, escapeCompat, extractColumnSpec } from '../table-structure/column-spec.ts';
 import { formatByteDown, getFormattedMaximumUploadSize } from '../util.ts';
 
+import type { PhpValue } from './php-params.ts';
+
 /** One row of SHOW FULL COLUMNS. */
 export interface TableColumn {
 	Field: string;
@@ -184,8 +186,11 @@ export function isWhereClauseNumeric(whereClause: string | string[] | null): boo
 	return clauses.some(clause => /^\s*`[^`]*`\.`[^`]*` = \d+/.test(clause));
 }
 
+/** The column fields the default function depends on; the routine execute form passes a column without Null and Extra. */
+export type FunctionFieldColumn = Pick<AnalyzedColumn, 'True_Type' | 'Type' | 'Key' | 'Default' | 'first_timestamp'> & Partial<Pick<AnalyzedColumn, 'Null' | 'Extra'>>;
+
 /** Generator::getDefaultFunctionForField(); $data, read as a global there, is never set on this page. */
-export function getDefaultFunctionForField(column: AnalyzedColumn, insertMode: boolean, config: EditConfig, server: ServerFlavor): string {
+export function getDefaultFunctionForField(column: FunctionFieldColumn, insertMode: boolean, config: EditConfig, server: ServerFlavor): string {
 	let defaultFunction = '';
 	const typeClass = getTypeClass(column.True_Type);
 	const configured = config.DefaultFunctions[`FUNC_${typeClass}`];
@@ -209,7 +214,7 @@ export function getDefaultFunctionForField(column: AnalyzedColumn, insertMode: b
 }
 
 /** Generator::getFunctionsForField(); `hasForeignField` is isset($foreignData['foreign_field']). */
-export function getFunctionsForField(column: AnalyzedColumn, insertMode: boolean, hasForeignField: boolean, config: EditConfig, server: ServerFlavor): string {
+export function getFunctionsForField(column: FunctionFieldColumn, insertMode: boolean, hasForeignField: boolean, config: EditConfig, server: ServerFlavor): string {
 	const defaultFunction = getDefaultFunctionForField(column, insertMode, config, server);
 	let html = '<option></option>\n';
 	for (const name of getAllFunctions(server)) {
@@ -230,7 +235,7 @@ export function isColumnBinary(column: AnalyzedColumn, isUpload: boolean, config
 }
 
 /** FormDisplay::save()'s cast of a posted checkbox: a missing one is false and '' is kept, as settype() is skipped for it. */
-export function castPostedBoolean(value: string | object | undefined): boolean | '' {
+export function castPostedBoolean(value: PhpValue | undefined): boolean | '' {
 	if (value === undefined) {
 		return false;
 	}

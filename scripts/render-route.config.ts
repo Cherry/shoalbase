@@ -1,4 +1,4 @@
-// vite-node config for scripts/render-route.ts: the vitest config plus Node stand-ins for the cloudflare:* modules.
+// Vite config for scripts/vite-run.ts (render-route and the template precompiler): the vitest config plus Node stand-ins for the cloudflare:* modules.
 import { fileURLToPath } from 'node:url';
 
 import { mergeConfig } from 'vite';

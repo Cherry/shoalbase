@@ -98,21 +98,29 @@ const hashOutputLength = { 'SHA-256': 32, 'SHA-384': 48, 'SHA-512': 64 } as cons
  */
 export const verifySignature = async (spki: Bytes, scheme: number, signature: Bytes, data: Bytes, allowPkcs1: boolean): Promise<void> => {
 	const details = schemeDetails.get(scheme);
-	if (!details || (details.family === 'rsa-pkcs1' && !allowPkcs1)) { throw new TlsError('Unsupported signature scheme.', 47); }
+	if (!details || (details.family === 'rsa-pkcs1' && !allowPkcs1)) {
+		throw new TlsError('Unsupported signature scheme.', 47);
+	}
 	const keyType = spkiKeyType(spki);
 	let valid: boolean;
 	if (details.family === 'ecdsa') {
 		const expectedCurve = details.hash === 'SHA-256' ? 'P-256' : 'P-384';
-		if (keyType.kind !== 'ec' || keyType.curve !== expectedCurve) { throw new TlsError('Signature scheme does not match the certificate key.', 47); }
+		if (keyType.kind !== 'ec' || keyType.curve !== expectedCurve) {
+			throw new TlsError('Signature scheme does not match the certificate key.', 47);
+		}
 		const key = await crypto.subtle.importKey('spki', spki, { name: 'ECDSA', namedCurve: keyType.curve }, false, ['verify']);
 		valid = await crypto.subtle.verify({ name: 'ECDSA', hash: details.hash }, key, ecdsaSignatureToRaw(signature, keyType.size), data);
 	} else {
-		if (keyType.kind !== 'rsa') { throw new TlsError('Signature scheme does not match the certificate key.', 47); }
+		if (keyType.kind !== 'rsa') {
+			throw new TlsError('Signature scheme does not match the certificate key.', 47);
+		}
 		const name = details.family === 'rsa-pss' ? 'RSA-PSS' : 'RSASSA-PKCS1-v1_5';
 		const key = await crypto.subtle.importKey('spki', spki, { name, hash: details.hash }, false, ['verify']);
 		valid = await crypto.subtle.verify({ name, saltLength: hashOutputLength[details.hash] }, key, signature, data);
 	}
-	if (!valid) { throw new TlsError('Server handshake signature is invalid.', 51); }
+	if (!valid) {
+		throw new TlsError('Server handshake signature is invalid.', 51);
+	}
 };
 
 export type EcdhGroup = 'X25519' | 'P-256' | 'P-384';
@@ -183,10 +191,14 @@ export interface DheResult {
 /** TLS 1.2 finite-field Diffie-Hellman with server-supplied parameters (MySQL 5.7 offers only DHE). */
 export const dheAgree = (prime: Bytes, generator: Bytes, serverPublic: Bytes): DheResult => {
 	const modulus = bytesToBigInt(prime);
-	if (modulus.toString(2).length < MIN_DH_PRIME_BITS || (modulus & 1n) === 0n) { throw new TlsError('Server Diffie-Hellman group is too weak.', 71); }
+	if (modulus.toString(2).length < MIN_DH_PRIME_BITS || (modulus & 1n) === 0n) {
+		throw new TlsError('Server Diffie-Hellman group is too weak.', 71);
+	}
 	const base = bytesToBigInt(generator);
 	const serverValue = bytesToBigInt(serverPublic);
-	if (base <= 1n || base >= modulus - 1n || serverValue <= 1n || serverValue >= modulus - 1n) { throw new TlsError('Invalid server Diffie-Hellman parameters.', 47); }
+	if (base <= 1n || base >= modulus - 1n || serverValue <= 1n || serverValue >= modulus - 1n) {
+		throw new TlsError('Invalid server Diffie-Hellman parameters.', 47);
+	}
 	const exponent = bytesToBigInt(crypto.getRandomValues(new Uint8Array(DH_EXPONENT_BYTES))) | (1n << BigInt((DH_EXPONENT_BYTES * 8) - 1));
 	// RFC 5246 8.1.2: the premaster secret is Z with leading zero bytes stripped, which bigIntToBytes already does.
 	return { publicKey: bigIntToBytes(modPow(base, exponent, modulus)), sharedSecret: bigIntToBytes(modPow(serverValue, exponent, modulus)) };

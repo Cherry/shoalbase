@@ -54,9 +54,13 @@ export const attemptLogin = async (cookies: PhpCookies, form: { username: string
 		cookies.remove(authCookieName(selectedServer));
 		return { status: 'failed', form: { servers, selectedServer, defaultUser: form.username, alertMessage, driverError } };
 	};
-	if (!server) { return failed(CANNOT_LOG_IN_MESSAGE); }
+	if (!server) {
+		return failed(CANNOT_LOG_IN_MESSAGE);
+	}
 	// Production sets AllowNoPassword = false for every server.
-	if (form.password === '') { return failed(loginFailureMessage('empty-denied')); }
+	if (form.password === '') {
+		return failed(loginFailureMessage('empty-denied'));
+	}
 	try {
 		const connection = await connectFromWorker({ host: server.host, port: server.port, user: form.username, password: form.password, ssl: server.ssl, pin: server.pin });
 		await connection.end();

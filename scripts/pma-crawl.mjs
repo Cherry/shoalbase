@@ -148,8 +148,12 @@ function page(id, route, params = [], needs = []) {
 	];
 }
 
-const ajax = (id, route, params = [], needs = []) => { return { id, needs, args: ['--ajax', route, ...params] }; };
-const post = (id, route, params = [], needs = []) => { return { id, needs, args: ['--post', '--ajax', route, ...params] }; };
+const ajax = (id, route, params = [], needs = []) => {
+	return { id, needs, args: ['--ajax', route, ...params] };
+};
+const post = (id, route, params = [], needs = []) => {
+	return { id, needs, args: ['--post', '--ajax', route, ...params] };
+};
 
 function staticCases() {
 	const db = `db=${DB}`;
@@ -438,13 +442,12 @@ async function warmUp(url, server) {
 	}
 }
 
-/** Starts one warm render-route process per lane, so each diff skips vite-node's start-up. */
+/** Starts one warm render-route process per lane, so each diff skips Vite's start-up. */
 async function startRenderers(server, count) {
-	const viteNode = path.join(ROOT, 'node_modules', 'vite-node', 'vite-node.mjs');
 	const renderers = [];
 	for (let lane = 0; lane < count; lane++) {
 		const port = RENDER_PORT_BASE + lane;
-		const child = spawn(process.execPath, [viteNode, '--config', 'scripts/render-route.config.ts', 'scripts/render-route.ts'], { cwd: ROOT, env: { ...process.env, PMA_RENDER_SERVE: String(port) }, stdio: 'ignore' });
+		const child = spawn(process.execPath, ['scripts/vite-run.ts', 'scripts/render-route.ts'], { cwd: ROOT, env: { ...process.env, PMA_RENDER_SERVE: String(port) }, stdio: 'ignore' });
 		renderers.push({ child, url: `http://127.0.0.1:${port}/` });
 	}
 	for (const { url } of renderers) {
@@ -453,7 +456,7 @@ async function startRenderers(server, count) {
 	return renderers;
 }
 
-// vite-node can leave esbuild children behind, so the whole tree is stopped.
+// The whole process tree is stopped, so nothing a renderer started can outlive the crawl.
 function stopRenderers(renderers) {
 	for (const { child } of renderers) {
 		if (process.platform === 'win32') {

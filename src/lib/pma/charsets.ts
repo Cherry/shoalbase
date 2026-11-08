@@ -277,7 +277,9 @@ export function buildCharsetList(charsetRows: Row[], collationRows: Row[], selec
 			return {
 				name: charset,
 				description: charsets.get(charset) as string,
-				collations: names.map((name) => { return { name, description: collationDescription(name), is_selected: name === selected }; }),
+				collations: names.map((name) => {
+					return { name, description: collationDescription(name), is_selected: name === selected };
+				}),
 			};
 		});
 }

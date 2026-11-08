@@ -20,6 +20,10 @@ describe('flattenConfig', () => {
 		const flat = flattenConfig({ a: { b: 1, c: [] }, d: ['x'], e: [null, 2], f: { 0: 'k', g: 1 }, h: new Map([['i', 3]]) });
 		expect([...flat]).toEqual([['a/b', 1], ['d', ['x']], ['e/0', null], ['e/1', 2], ['f', { 0: 'k', g: 1 }], ['h/i', 3]]);
 	});
+
+	it('keeps a flat path over the same path from a later nested array, like PHP\'s array union', () => {
+		expect([...flattenConfig({ 'a/b': 1, 'a': { b: 2, c: 3 } })]).toEqual([['a/b', 1], ['a/c', 3]]);
+	});
 });
 
 describe('UserConfigFile', () => {

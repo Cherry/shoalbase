@@ -69,7 +69,9 @@ export async function favoriteTableController(context: PmaContext): Promise<Resp
 			alreadyFavorite = true;
 		}
 	}
-	favoriteTables[user] = getTables(context, 'favorite').map((item) => { return { db: item.db, table: item.table }; });
+	favoriteTables[user] = getTables(context, 'favorite').map((item) => {
+		return { db: item.db, table: item.table };
+	});
 	if (!changes) {
 		response.addJSON({ changes, message: await render(context, 'components/error_message', { msg: 'Favorite List is full!' }) });
 		return response.response();

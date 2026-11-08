@@ -62,6 +62,11 @@ describe('parseCsv', () => {
 		expect(parseCsv('|a|"', { terminated: '|||', enclosed: '|', escaped: '"', newLine: '|', maxLinesConstraint: 0 })).toEqual({ rows: [], formatErrorLine: null });
 	});
 
+	it('ends the line without the value when a separator ending in the line end closes the input', () => {
+		// The fallback steps past the separator's first character, so the next pass resumes at the finished line end.
+		expect(parseCsv(';;;|', { ...defaults, terminated: ';|', newLine: '|' })).toEqual({ rows: [[]], formatErrorLine: null });
+	});
+
 	it('ignores input without any line end, as upstream never parses that chunk', () => {
 		expect(parseCsv('', defaults).rows).toEqual([]);
 		expect(parseCsv('abc', { ...defaults, newLine: ';' }).rows).toEqual([['abc']]);

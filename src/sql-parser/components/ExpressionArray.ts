@@ -1,5 +1,5 @@
 // Port of PhpMyAdmin\SqlParser\Components\ExpressionArray: a comma separated list of expressions.
-import { Component, type ComponentClass } from '../Component.ts';
+import { Component } from '../Component.ts';
 import { Token } from '../Token.ts';
 import { CaseExpression } from './CaseExpression.ts';
 import { Expression, type ExpressionOptions } from './Expression.ts';
@@ -79,6 +79,6 @@ export class ExpressionArray extends Component {
 	}
 
 	static build(component: Component[]): string {
-		return component.map(fragment => (fragment.constructor as unknown as ComponentClass).build(fragment)).join(', ');
+		return component.map(fragment => fragment.toString()).join(', ');
 	}
 }

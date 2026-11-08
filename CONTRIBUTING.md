@@ -24,6 +24,7 @@ This starts MySQL 8.4, MariaDB 12.3, MySQL 5.7 and a phpMyAdmin 5.2.3 oracle at 
 ```sh
 npm run lint
 npm run test:coverage
+npm run test:workers
 npm run build
 ```
 

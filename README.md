@@ -105,7 +105,7 @@ Sessions follow phpMyAdmin's cookie authentication, with a Durable Object in pla
 - A session expires after `LoginCookieValidity` (1440 seconds, or the user's own preference) without activity in any browser window, and the next request shows phpMyAdmin's inactivity notice. An alarm deletes the object's storage 5 minutes after that, like PHP's session garbage collection.
 - Logging in starts a new session with a new id. Logging out deletes the session object and the password cookies, so copies of the cookies stop working at once.
 
-`src/middleware.ts` loads the session with one call to its object at the start of each `index.php` request, and the dispatcher stores what changed with a second call only when `$_SESSION` changed. Node has no Durable Objects, so `vitest` and `scripts/render-route.ts` (used by `pma-diff` and the crawl) use an in-memory stand-in (`scripts/stubs/durable-objects.ts`) that runs the same class.
+`src/middleware.ts` loads the session with one call to its object at the start of each `index.php` request, and the dispatcher stores what changed with a second call only when `$_SESSION` changed. `npm run test:workers` tests the session object and this request side in workerd, with the real SQLite storage and alarms. Node has no Durable Objects, so `scripts/render-route.ts` (used by `pma-diff` and the crawl) runs the same class on an in-memory stand-in (`scripts/stubs/durable-objects.ts`).
 
 For a signed-in request, the middleware also prepares one TCP connection with `cloudflare:sockets`. It opens on the first query, every query of the request reuses it, and it closes once the response body has been sent.
 
@@ -114,13 +114,14 @@ For a signed-in request, the middleware also prepares one TCP connection with `c
 | Command | Needs | What it checks |
 | --- | --- | --- |
 | `npm run lint` | | ESLint and `astro check`. |
-| `npm test` | | Unit tests. `npm run test:coverage` adds the 100% coverage gate for `src/lib/**`. |
+| `npm test` | | Unit tests in Node. `npm run test:coverage` adds the 100% coverage gate for `src/lib/**`. |
+| `npm run test:workers` | | The session Durable Object and session cookies in workerd, with `@cloudflare/vitest-plugin` (`vitest.workers.config.ts`, `tests/workers/`). |
 | `node scripts/pma-diff.mjs <route> [key=value ...]` | Docker stack | One route, rendered by the oracle and by our dispatcher in Node, diffed. See the header of `scripts/pma-oracle.mjs` for the options. |
 | `npm run test:live -- <baseUrl>` | Docker stack, a running build | The docroot, login, tampered cookies, logout, and every GET route, in the built Worker. `LIVE_SERVER` picks the server (1-based). |
 | `npm run test:visual` | Docker stack, `npm run build` | Pixel comparison of screens and interactions against the oracle, with Playwright. |
 | `npm run parity:crawl` | Docker stack | About 270 diffed cases per server, written to `tests/parity-report/`. |
 
-On every push and pull request, CI runs lint, the unit tests with coverage, the build, the live smoke on all four servers and the visual suite. The crawl runs when the workflow is started by hand. See `.github/workflows/ci.yml`.
+On every push and pull request, CI runs lint, the unit tests with coverage, the workerd tests, the build, the live smoke on all four servers and the visual suite. The crawl runs when the workflow is started by hand. See `.github/workflows/ci.yml`.
 
 ## Contributing and security
 

@@ -105,6 +105,7 @@ export abstract class Statement {
 
 	/** The class of this statement, for late static binding (static::$OPTIONS...). */
 	protected statics(): StatementClass {
+		// eslint-disable-next-line antislop/no-chained-type-assertions -- TypeScript types this.constructor as Function, so the subclass's static side needs an explicit lookup.
 		return this.constructor as unknown as StatementClass;
 	}
 
@@ -119,11 +120,11 @@ export abstract class Statement {
 
 	/** `$this->$field`. */
 	getProperty(field: string): unknown {
-		return (this as unknown as Record<string, unknown>)[field] ?? null;
+		return Reflect.get(this, field) ?? null;
 	}
 
 	setProperty(field: string, value: unknown): void {
-		(this as unknown as Record<string, unknown>)[field] = value;
+		Reflect.set(this, field, value);
 	}
 
 	build(): string {
