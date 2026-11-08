@@ -33,7 +33,7 @@ Commit messages follow [Conventional Commits](https://www.conventionalcommits.or
 
 ## Releases
 
-Every push to `main` that passes CI runs semantic-release. A `feat` or `fix` commit tags a new version, writes the GitHub release notes, and publishes the `shoalbase` package to npm with trusted publishing.
+Every push to `main` that passes CI runs semantic-release. A `feat` or `fix` commit tags a new version, writes the GitHub release notes, and publishes the `shoalbase` package to npm with trusted publishing. Commits that only touch `website/` never release, since the site deploys on its own (`scripts/release-commits.mjs`).
 
 The npm package is only the installer in `bin/`, which clones the tag of its own version. Everything the Worker needs, including `mysql2` and `twing`, is a devDependency: the build bundles it, and `npx shoalbase` installs nothing.
 

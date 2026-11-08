@@ -1,5 +1,10 @@
 {
 	"branches": [
 		"main"
+	],
+	"plugins": [
+		"./scripts/release-commits.mjs",
+		"@semantic-release/npm",
+		"@semantic-release/github"
 	]
 }
