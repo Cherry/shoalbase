@@ -1,0 +1,79 @@
+{
+	"name": "shoalbase",
+	"version": "0.1.0",
+	"private": true,
+	"description": "phpMyAdmin, ported to Cloudflare Workers with page-for-page parity.",
+	"keywords": [
+		"phpmyadmin",
+		"cloudflare-workers",
+		"mysql",
+		"mariadb",
+		"database-admin"
+	],
+	"homepage": "https://github.com/Cherry/shoalbase#readme",
+	"bugs": "https://github.com/Cherry/shoalbase/issues",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Cherry/shoalbase.git"
+	},
+	"license": "GPL-3.0-or-later",
+	"author": "James Ross <james@jross.me>",
+	"type": "module",
+	"scripts": {
+		"astro": "astro",
+		"templates": "vite-node --config scripts/render-route.config.ts scripts/precompile-templates.mjs",
+		"prebuild": "npm run templates",
+		"build": "astro build",
+		"predev": "npm run templates",
+		"dev": "astro dev",
+		"prelint": "npm run templates",
+		"lint": "eslint . && astro check",
+		"precheck": "npm run templates",
+		"check": "astro check",
+		"lint:fix": "eslint . --fix",
+		"preview": "astro preview",
+		"pretest": "npm run templates",
+		"test": "vitest run",
+		"pretest:coverage": "npm run templates",
+		"test:coverage": "vitest run --coverage",
+		"deploy": "npm run build && wrangler deploy",
+		"test:live": "node --experimental-strip-types tests/live-smoke.ts",
+		"parity:crawl": "node scripts/pma-crawl.mjs",
+		"db:up": "docker compose -f docker/compose.yaml up -d --wait",
+		"db:down": "docker compose -f docker/compose.yaml down -v",
+		"dev-vars": "node scripts/dev-vars.mjs",
+		"test:visual": "playwright test -c tests/visual/playwright.config.ts"
+	},
+	"engines": {
+		"node": ">= 24"
+	},
+	"devDependencies": {
+		"@astrojs/check": "0.9.10",
+		"@astrojs/cloudflare": "14.2.3",
+		"@nodecraft/eslint-config": "50.1.0",
+		"@playwright/test": "1.64.1",
+		"@stylistic/eslint-plugin": "5.10.0",
+		"@types/node": "24.10.0",
+		"@types/pngjs": "6.0.5",
+		"@vitest/coverage-v8": "3.2.4",
+		"astro": "7.2.0",
+		"eslint": "10.8.0",
+		"eslint-plugin-astro": "3.1.0",
+		"eslint-plugin-import-newlines": "2.0.0",
+		"eslint-plugin-import-x": "4.17.1",
+		"eslint-plugin-n": "18.2.2",
+		"eslint-plugin-unicorn": "72.0.0",
+		"jsdom": "26.1.0",
+		"pixelmatch": "8.0.0",
+		"pngjs": "7.0.0",
+		"typescript": "6.0.3",
+		"typescript-eslint": "8.66.0",
+		"vite-node": "3.2.4",
+		"vitest": "3.2.4",
+		"wrangler": "4.119.0"
+	},
+	"dependencies": {
+		"mysql2": "3.23.4",
+		"twing": "7.3.1"
+	}
+}

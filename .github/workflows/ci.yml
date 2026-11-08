@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      crawl:
+        description: Also run the full parity crawl (about 10 minutes per persona)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  WRANGLER_SEND_METRICS: 'false'
+
+jobs:
+  check:
+    name: Lint, types, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:coverage
+      - run: npm run build
+
+  parity:
+    name: Parity against phpMyAdmin 5.2.3
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Start test servers and the oracle
+        run: npm run db:up
+      - run: npm run dev-vars
+      - run: npm run build
+
+      - name: Live smoke on every server
+        run: |
+          npx wrangler dev -c dist/server/wrangler.json --port 8831 --ip 127.0.0.1 --show-interactive-dev-session=false > wrangler.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:8831/index.php && break
+            sleep 2
+          done
+          for server in 1 2 3 4; do
+            LIVE_SERVER=$server npm run test:live -- http://127.0.0.1:8831
+          done
+          kill %1
+
+      - run: npx playwright install --with-deps chromium
+      - name: Screenshots and interactions
+        run: npm run test:visual
+
+      - name: Parity crawl
+        if: ${{ inputs.crawl }}
+        run: |
+          npm run parity:crawl
+          npm run parity:crawl -- --user root
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() || inputs.crawl }}
+        with:
+          name: parity-reports
+          path: |
+            wrangler.log
+            tests/visual/report/
+            tests/parity-report/
+          if-no-files-found: ignore

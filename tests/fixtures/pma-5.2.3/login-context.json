@@ -1,0 +1,202 @@
+{
+	"token": "726361345d54512a664a324d32566548",
+	"sessionId": "fa12e6d296a71f01bc4c4a8c2fd9fe25",
+	"lang": "en",
+	"server": 1,
+	"servers": [
+		{
+			"value": 1,
+			"label": "dbadmin-mysql"
+		},
+		{
+			"value": 2,
+			"label": "dbadmin-mysql-b"
+		}
+	],
+	"languages": [
+		{
+			"code": "sq",
+			"name": "Shqip - Albanian"
+		},
+		{
+			"code": "ar",
+			"name": "&#1575;&#1604;&#1593;&#1585;&#1576;&#1610;&#1577; - Arabic"
+		},
+		{
+			"code": "hy",
+			"name": "Հայերէն - Armenian"
+		},
+		{
+			"code": "az",
+			"name": "Az&#601;rbaycanca - Azerbaijani"
+		},
+		{
+			"code": "bn",
+			"name": "বাংলা - Bangla"
+		},
+		{
+			"code": "be",
+			"name": "&#1041;&#1077;&#1083;&#1072;&#1088;&#1091;&#1089;&#1082;&#1072;&#1103; - Belarusian"
+		},
+		{
+			"code": "bg",
+			"name": "&#1041;&#1098;&#1083;&#1075;&#1072;&#1088;&#1089;&#1082;&#1080; - Bulgarian"
+		},
+		{
+			"code": "ca",
+			"name": "Catal&agrave; - Catalan"
+		},
+		{
+			"code": "zh_cn",
+			"name": "&#20013;&#25991; - Chinese simplified"
+		},
+		{
+			"code": "zh_tw",
+			"name": "&#20013;&#25991; - Chinese traditional"
+		},
+		{
+			"code": "cs",
+			"name": "Čeština - Czech"
+		},
+		{
+			"code": "da",
+			"name": "Dansk - Danish"
+		},
+		{
+			"code": "nl",
+			"name": "Nederlands - Dutch"
+		},
+		{
+			"code": "en",
+			"name": "English"
+		},
+		{
+			"code": "en_gb",
+			"name": "English (United Kingdom)"
+		},
+		{
+			"code": "et",
+			"name": "Eesti - Estonian"
+		},
+		{
+			"code": "fi",
+			"name": "Suomi - Finnish"
+		},
+		{
+			"code": "fr",
+			"name": "Fran&ccedil;ais - French"
+		},
+		{
+			"code": "gl",
+			"name": "Galego - Galician"
+		},
+		{
+			"code": "ka",
+			"name": "&#4325;&#4304;&#4320;&#4311;&#4323;&#4314;&#4312; - Georgian"
+		},
+		{
+			"code": "de",
+			"name": "Deutsch - German"
+		},
+		{
+			"code": "el",
+			"name": "&Epsilon;&lambda;&lambda;&eta;&nu;&iota;&kappa;&#940; - Greek"
+		},
+		{
+			"code": "he",
+			"name": "&#1506;&#1489;&#1512;&#1497;&#1514; - Hebrew"
+		},
+		{
+			"code": "hu",
+			"name": "Magyar - Hungarian"
+		},
+		{
+			"code": "id",
+			"name": "Bahasa Indonesia - Indonesian"
+		},
+		{
+			"code": "ia",
+			"name": "Interlingua"
+		},
+		{
+			"code": "it",
+			"name": "Italiano - Italian"
+		},
+		{
+			"code": "ja",
+			"name": "&#26085;&#26412;&#35486; - Japanese"
+		},
+		{
+			"code": "kk",
+			"name": "Қазақ - Kazakh"
+		},
+		{
+			"code": "ko",
+			"name": "&#54620;&#44397;&#50612; - Korean"
+		},
+		{
+			"code": "nb",
+			"name": "Norsk - Norwegian"
+		},
+		{
+			"code": "pl",
+			"name": "Polski - Polish"
+		},
+		{
+			"code": "pt",
+			"name": "Portugu&ecirc;s - Portuguese"
+		},
+		{
+			"code": "pt_br",
+			"name": "Portugu&ecirc;s (Brasil) - Portuguese (Brazil)"
+		},
+		{
+			"code": "ro",
+			"name": "Rom&acirc;n&#259; - Romanian"
+		},
+		{
+			"code": "ru",
+			"name": "&#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081; - Russian"
+		},
+		{
+			"code": "si",
+			"name": "&#3523;&#3538;&#3458;&#3524;&#3517; - Sinhala"
+		},
+		{
+			"code": "sk",
+			"name": "Sloven&#269;ina - Slovak"
+		},
+		{
+			"code": "sl",
+			"name": "Sloven&scaron;&#269;ina - Slovenian"
+		},
+		{
+			"code": "es",
+			"name": "Espa&ntilde;ol - Spanish"
+		},
+		{
+			"code": "sv",
+			"name": "Svenska - Swedish"
+		},
+		{
+			"code": "ta",
+			"name": "தமிழ் - Tamil"
+		},
+		{
+			"code": "tr",
+			"name": "T&uuml;rk&ccedil;e - Turkish"
+		},
+		{
+			"code": "uk",
+			"name": "&#1059;&#1082;&#1088;&#1072;&#1111;&#1085;&#1089;&#1100;&#1082;&#1072; - Ukrainian"
+		},
+		{
+			"code": "ug",
+			"name": "ئۇيغۇرچە - Uyghur"
+		},
+		{
+			"code": "vi",
+			"name": "Tiếng Việt - Vietnamese"
+		}
+	]
+}

@@ -3,3 +3,7 @@
 *.ico binary
 *.woff binary
 *.woff2 binary
+# Vendored upstream files and captured fixtures keep their exact bytes.
+public/** -text
+vendor/** -text
+tests/fixtures/** -text

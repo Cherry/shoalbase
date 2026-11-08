@@ -1,0 +1,5 @@
+phpMyAdmin 5.2.3 files copied unmodified from the official phpmyadmin:5.2 Docker image (/var/www/html).
+Licensed under the GNU GPL v2 or later; see LICENSE.
+- templates/: Twig templates rendered by the Worker.
+- locale/: gettext catalogs.
+Static assets (themes, js, doc) live in public/ at the same relative paths phpMyAdmin serves them from.

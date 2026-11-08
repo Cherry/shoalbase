@@ -1,0 +1,4 @@
+# Encrypts the login cookies (phpMyAdmin's blowfish_secret equivalent). At least 32 characters.
+PMA_COOKIE_SECRET=replace-with-at-least-32-random-characters
+# The servers users can sign in to, as a JSON array; see README.md. `npm run dev-vars` writes both values for the Docker test servers.
+PMA_SERVERS=[{"host":"127.0.0.1","port":33306}]

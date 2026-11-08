@@ -1,0 +1,9 @@
+HTTP/1.1 200 OK
+Date: Fri, 06 Nov 2026 16:39:09 GMT
+Server: Apache/2.4.69 (Debian)
+Expires: Fri, 06 Nov 2026 17:39:09 GMT
+X-ob_mode: 1
+Vary: Accept-Encoding
+Transfer-Encoding: chunked
+Content-Type: text/javascript; charset=UTF-8
+
